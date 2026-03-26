@@ -121,7 +121,7 @@ def render_sidebar():
         st.caption("✅ Key set" if st.session_state.api_key else "⚠️ Needed for AI features")
 
         # Gemini Model
-                st.session_state.model = st.selectbox(
+        st.session_state.model = st.selectbox(
             "Model:", [
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
