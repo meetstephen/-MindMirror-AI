@@ -907,11 +907,15 @@ def page_onboarding():
     # ── Step 3: Custom Emotion Vocabulary ────────────────────────
     elif step == 3:
         st.markdown("### 3️⃣ Your emotional vocabulary")
-        st.caption(
+               st.caption(
             "MindMirror comes with standard emotions, but you might use "
-            "words like *"overwhelmed"*, *"flow"*, or *"meh"*. "
+            "words like *'overwhelmed'*, *'flow'*, or *'meh'*. "
             "Add your own so the app speaks **your** language."
-        )
+        ) 
+            
+            
+            
+        
 
         default_display = [
             "😊 Joy", "😢 Sadness", "😠 Anger", "😰 Fear",
