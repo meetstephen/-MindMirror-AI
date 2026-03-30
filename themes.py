@@ -1,17 +1,14 @@
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║  MindMirror AI — themes.py  CHUNK 4 of 10  (v3 · Full)        ║
-# ║  8 Complete Themes · WCAG AA · Adaptive Tinting ·             ║
-# ║  CSS Custom Properties · Streamlit Overrides ·                ║
-# ║  High Contrast · Reduced Motion · Print Styles ·              ║
-# ║  Font Scaling · Responsive · Component Classes                ║
+# ║  MindMirror AI — themes.py  CHUNK 4 of 10  (v3 · CORRECTED)   ║
+# ║  8 Themes · get_theme_css · get_plotly_colors ·                ║
+# ║  get_theme · get_theme_recommendation · THEME_NAMES            ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-import streamlit as st
 
 # ═══════════════════════════════════════════════════════════════════
-#  THEME DEFINITIONS  (8 themes)
+#  THEME DEFINITIONS
 #
-#  Every theme must have ALL of these keys:
+#  Keys used by app.py:
 #    display_name, description, bg, bg_secondary, card_bg,
 #    text, text_secondary, accent, accent_secondary, border,
 #    positive, negative, neutral, sidebar_bg, input_bg
@@ -19,9 +16,8 @@ import streamlit as st
 
 THEMES = {
 
-    # ── 1. Midnight Ocean (default) ──────────────────────────────
-    "midnight_ocean": {
-        "display_name": "🌊 Midnight Ocean",
+    "🌊 Deep Ocean": {
+        "display_name": "🌊 Deep Ocean",
         "description": "Deep navy tones with teal accents. Calm and focused.",
         "bg":               "#0B1120",
         "bg_secondary":     "#111B2E",
@@ -38,8 +34,7 @@ THEMES = {
         "input_bg":         "#162032",
     },
 
-    # ── 2. Aurora ────────────────────────────────────────────────
-    "aurora": {
+    "🌌 Aurora": {
         "display_name": "🌌 Aurora",
         "description": "Dark purple canvas with shifting green-cyan glow.",
         "bg":               "#0F0A1A",
@@ -57,8 +52,7 @@ THEMES = {
         "input_bg":         "#1E1535",
     },
 
-    # ── 3. Sunset ────────────────────────────────────────────────
-    "sunset": {
+    "🌅 Sunset": {
         "display_name": "🌅 Sunset",
         "description": "Warm amber and rose tones on a dark canvas.",
         "bg":               "#1A110B",
@@ -76,8 +70,7 @@ THEMES = {
         "input_bg":         "#2E2016",
     },
 
-    # ── 4. Forest ────────────────────────────────────────────────
-    "forest": {
+    "🌲 Forest": {
         "display_name": "🌲 Forest",
         "description": "Deep woodland greens with gold accents.",
         "bg":               "#0A1510",
@@ -95,8 +88,7 @@ THEMES = {
         "input_bg":         "#162B1E",
     },
 
-    # ── 5. Minimal Light ─────────────────────────────────────────
-    "minimal_light": {
+    "☀️ Minimal Light": {
         "display_name": "☀️ Minimal Light",
         "description": "Clean white canvas with crisp blue accents.",
         "bg":               "#FAFBFC",
@@ -114,8 +106,7 @@ THEMES = {
         "input_bg":         "#EDF2F7",
     },
 
-    # ── 6. Lavender Mist ─────────────────────────────────────────
-    "lavender_mist": {
+    "💜 Lavender Mist": {
         "display_name": "💜 Lavender Mist",
         "description": "Soft lilac light theme. Gentle and soothing.",
         "bg":               "#F8F5FF",
@@ -133,8 +124,7 @@ THEMES = {
         "input_bg":         "#EDE9F8",
     },
 
-    # ── 7. Deep Space ────────────────────────────────────────────
-    "deep_space": {
+    "🚀 Deep Space": {
         "display_name": "🚀 Deep Space",
         "description": "Pure black with electric blue. Maximum contrast.",
         "bg":               "#000000",
@@ -152,8 +142,7 @@ THEMES = {
         "input_bg":         "#141414",
     },
 
-    # ── 8. Warm Earth ────────────────────────────────────────────
-    "warm_earth": {
+    "🏜️ Warm Earth": {
         "display_name": "🏜️ Warm Earth",
         "description": "Sandy browns and terracotta. Grounded and calm.",
         "bg":               "#1C1612",
@@ -172,104 +161,83 @@ THEMES = {
     },
 }
 
-# Ordered list for UI selectors
-THEME_NAMES = [
-    "midnight_ocean",
-    "aurora",
-    "sunset",
-    "forest",
-    "minimal_light",
-    "lavender_mist",
-    "deep_space",
-    "warm_earth",
-]
+THEME_NAMES = list(THEMES.keys())
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  PUBLIC API
+#  get_theme(name) → dict
 # ═══════════════════════════════════════════════════════════════════
 
 def get_theme(name: str) -> dict:
-    """Return the full theme dict. Falls back to midnight_ocean."""
-    return THEMES.get(name, THEMES["midnight_ocean"])
+    """Return the full theme dict. Falls back to Deep Ocean."""
+    return THEMES.get(name, THEMES["🌊 Deep Ocean"])
 
+
+# ═══════════════════════════════════════════════════════════════════
+#  get_plotly_colors(name) → dict
+#
+#  Returns: { paper, text, grid, colors (list), accent }
+# ═══════════════════════════════════════════════════════════════════
+
+def get_plotly_colors(name: str) -> dict:
+    """Return Plotly-friendly color config for the given theme."""
+    t = get_theme(name)
+    return {
+        "paper":  t["card_bg"],
+        "text":   t["text"],
+        "grid":   t["border"],
+        "accent": t["accent"],
+        "colors": [
+            t["accent"],
+            t["accent_secondary"],
+            t["positive"],
+            t["negative"],
+            t["neutral"],
+            "#FFD93D",
+            "#FF6B6B",
+            "#48DBFB",
+            "#FF9FF3",
+            "#54A0FF",
+        ],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  get_theme_recommendation(avg_sentiment) → list of display names
+# ═══════════════════════════════════════════════════════════════════
 
 def get_theme_recommendation(avg_sentiment: float) -> list:
-    """Suggest themes based on recent average mood.
-
-    Returns a list of theme display_name strings (best first).
-    """
+    """Suggest themes based on recent average mood."""
     if avg_sentiment > 0.3:
-        # Thriving — energetic or expansive themes
-        keys = ["aurora", "deep_space", "minimal_light"]
+        return ["🌌 Aurora", "🚀 Deep Space", "☀️ Minimal Light"]
     elif avg_sentiment > 0.0:
-        # Mildly positive — balanced, warm themes
-        keys = ["midnight_ocean", "forest", "lavender_mist"]
+        return ["🌊 Deep Ocean", "🌲 Forest", "💜 Lavender Mist"]
     elif avg_sentiment > -0.3:
-        # Mildly low — warm, grounding themes
-        keys = ["warm_earth", "sunset", "forest"]
+        return ["🏜️ Warm Earth", "🌅 Sunset", "🌲 Forest"]
     else:
-        # Distressed — gentle, soothing themes
-        keys = ["lavender_mist", "warm_earth", "sunset"]
-
-    return [THEMES[k]["display_name"] for k in keys if k in THEMES]
-
-
-def get_adaptive_tint(avg_sentiment: float) -> str:
-    """Return a subtle RGBA border tint based on mood.
-
-    Used when adaptive_theme_enabled is True.
-    The returned color is applied to card borders at low opacity.
-    """
-    if avg_sentiment > 0.3:
-        # Thriving — soft green glow
-        return "rgba(82, 214, 138, 0.25)"
-    elif avg_sentiment > 0.0:
-        # Mildly positive — teal
-        return "rgba(100, 255, 218, 0.15)"
-    elif avg_sentiment > -0.3:
-        # Mildly low — warm amber
-        return "rgba(255, 183, 77, 0.20)"
-    else:
-        # Distressed — soft purple (calming, not alarming)
-        return "rgba(162, 155, 254, 0.25)"
+        return ["💜 Lavender Mist", "🏜️ Warm Earth", "🌅 Sunset"]
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  CSS GENERATION & INJECTION
+#  get_theme_css(name, ...) → str
+#
+#  Returns the full CSS string (with <style> tags) for injection
+#  via st.markdown(css, unsafe_allow_html=True)
 # ═══════════════════════════════════════════════════════════════════
 
-def apply_theme(
+def get_theme_css(
     theme_name: str,
     font_size_scale: float = 1.0,
     high_contrast: bool = False,
     reduce_motion: bool = False,
-):
-    """Generate and inject the full CSS for the selected theme.
-
-    Covers:
-      - CSS custom properties (--mm-* variables)
-      - Body, sidebar, main area backgrounds
-      - .mm-card, .mm-emotion-tag, .mm-celebration, .mm-crisis-banner
-      - Streamlit component overrides (buttons, inputs, sliders,
-        expanders, tabs, metrics, dataframes, chat, etc.)
-      - Scrollbar styling
-      - Font size scaling
-      - High contrast mode
-      - Reduced motion mode
-      - Print stylesheet
-      - Responsive breakpoints
-    """
+) -> str:
+    """Generate complete CSS string for the selected theme."""
 
     t = get_theme(theme_name)
-
-    # Detect light vs dark for template-level decisions
-    is_light = theme_name in ("minimal_light", "lavender_mist")
-
-    # ── Font scale ───────────────────────────────────────────────
+    is_light = theme_name in ("☀️ Minimal Light", "💜 Lavender Mist")
     base_font = 16 * font_size_scale
 
-    # ── High contrast overrides ──────────────────────────────────
+    # High contrast overrides
     if high_contrast:
         if is_light:
             text_main = "#000000"
@@ -284,18 +252,12 @@ def apply_theme(
         text_sec = t["text_secondary"]
         border_c = t["border"]
 
-    # ── Transition value ─────────────────────────────────────────
     transition = "none" if reduce_motion else "all 0.2s ease"
 
-    # ── Build CSS ────────────────────────────────────────────────
     css = f"""
 <style>
 
-/* ═══════════════════════════════════════════════════════════════
-   CSS CUSTOM PROPERTIES
-   Referenced throughout app.py with var(--mm-*)
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── CSS Custom Properties ─────────────────────────────────── */
 :root {{
     --mm-bg:              {t["bg"]};
     --mm-bg-secondary:    {t["bg_secondary"]};
@@ -316,87 +278,62 @@ def apply_theme(
     --mm-radius-sm:       8px;
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   GLOBAL / BODY
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Global ────────────────────────────────────────────────── */
 html, body, [data-testid="stAppViewContainer"] {{
     background-color: var(--mm-bg) !important;
     color: var(--mm-text) !important;
     font-size: var(--mm-font-base) !important;
 }}
-
 [data-testid="stAppViewContainer"] > section > div {{
     background-color: var(--mm-bg) !important;
 }}
-
-/* Main content area */
 .main .block-container {{
     max-width: 1100px;
     padding-top: 2rem;
     padding-bottom: 4rem;
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   SIDEBAR
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Sidebar ───────────────────────────────────────────────── */
 [data-testid="stSidebar"] {{
     background-color: var(--mm-sidebar-bg) !important;
     border-right: 1px solid var(--mm-border) !important;
 }}
-
 [data-testid="stSidebar"] * {{
     color: var(--mm-text) !important;
 }}
-
 [data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] .stMarkdown li {{
     color: var(--mm-text-secondary) !important;
 }}
-
 [data-testid="stSidebar"] .stMarkdown h1,
 [data-testid="stSidebar"] .stMarkdown h2,
 [data-testid="stSidebar"] .stMarkdown h3,
 [data-testid="stSidebar"] .stMarkdown h4 {{
     color: var(--mm-text) !important;
 }}
-
 [data-testid="stSidebar"] hr {{
     border-color: var(--mm-border) !important;
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   HEADINGS & TEXT
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Headings & Text ───────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {{
     color: var(--mm-text) !important;
 }}
-
 p, li, span, label, div {{
     color: var(--mm-text);
 }}
-
 a {{
     color: var(--mm-accent) !important;
 }}
-
 a:hover {{
     color: var(--mm-accent-secondary) !important;
 }}
-
 hr {{
     border-color: var(--mm-border) !important;
 }}
-
 small, .stCaption, [data-testid="stCaptionContainer"] {{
     color: var(--mm-text-secondary) !important;
 }}
-
 code {{
     background-color: var(--mm-bg-secondary) !important;
     color: var(--mm-accent) !important;
@@ -405,13 +342,7 @@ code {{
     padding: 2px 6px;
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   CUSTOM COMPONENT CLASSES
-   Used in app.py via st.markdown(unsafe_allow_html=True)
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── Cards ────────────────────────────────────────────────────── */
+/* ── .mm-card ──────────────────────────────────────────────── */
 .mm-card {{
     background: var(--mm-card-bg);
     border: 1px solid var(--mm-border);
@@ -420,25 +351,22 @@ code {{
     margin-bottom: 16px;
     transition: var(--mm-transition);
 }}
-
 .mm-card:hover {{
     border-color: var(--mm-accent);
     box-shadow: 0 0 12px {t["accent"]}18;
 }}
-
 .mm-card h4 {{
     margin-top: 0;
     margin-bottom: 8px;
     color: var(--mm-accent) !important;
 }}
-
 .mm-card p {{
     margin-bottom: 8px;
     color: var(--mm-text-secondary) !important;
     line-height: 1.6;
 }}
 
-/* ── Emotion Tags ─────────────────────────────────────────────── */
+/* ── .mm-emotion-tag ───────────────────────────────────────── */
 .mm-emotion-tag {{
     display: inline-block;
     background: {t["accent"]}1A;
@@ -451,19 +379,19 @@ code {{
     font-weight: 500;
     transition: var(--mm-transition);
 }}
-
 .mm-emotion-tag:hover {{
     background: {t["accent"]}33;
     border-color: {t["accent"]}88;
 }}
+.mm-emotion-tag.negative {{
+    background: {t["negative"]}1A;
+    color: {t["negative"]};
+    border-color: {t["negative"]}44;
+}}
 
-/* ── Celebration Banner ───────────────────────────────────────── */
+/* ── .mm-celebration ───────────────────────────────────────── */
 .mm-celebration {{
-    background: linear-gradient(
-        135deg,
-        {t["positive"]}1A,
-        {t["accent"]}1A
-    );
+    background: linear-gradient(135deg, {t["positive"]}1A, {t["accent"]}1A);
     border: 1px solid {t["positive"]}44;
     border-radius: var(--mm-radius);
     padding: 14px 20px;
@@ -473,14 +401,13 @@ code {{
     color: var(--mm-text) !important;
     animation: {"none" if reduce_motion else "mm-glow 2s ease-in-out infinite alternate"};
 }}
-
 @keyframes mm-glow {{
     from {{ box-shadow: 0 0 4px {t["positive"]}22; }}
     to   {{ box-shadow: 0 0 16px {t["positive"]}44; }}
 }}
 
-/* ── Crisis Banner ────────────────────────────────────────────── */
-.mm-crisis-banner {{
+/* ── .mm-crisis ────────────────────────────────────────────── */
+.mm-crisis {{
     background: {t["negative"]}12;
     border: 2px solid {t["negative"]}66;
     border-radius: var(--mm-radius);
@@ -488,27 +415,7 @@ code {{
     margin: 12px 0;
 }}
 
-.mm-crisis-banner h4 {{
-    color: {t["negative"]} !important;
-    margin-top: 0;
-}}
-
-.mm-crisis-banner p,
-.mm-crisis-banner a {{
-    line-height: 1.7;
-}}
-
-.mm-crisis-banner a {{
-    color: {t["accent"]} !important;
-    font-weight: 600;
-}}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   STREAMLIT COMPONENT OVERRIDES
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── Buttons ──────────────────────────────────────────────────── */
+/* ── Buttons ───────────────────────────────────────────────── */
 button[kind="primary"],
 .stButton > button[kind="primary"],
 [data-testid="stBaseButton-primary"] {{
@@ -519,14 +426,11 @@ button[kind="primary"],
     font-weight: 600 !important;
     transition: var(--mm-transition) !important;
 }}
-
 button[kind="primary"]:hover,
-.stButton > button[kind="primary"]:hover,
 [data-testid="stBaseButton-primary"]:hover {{
     opacity: 0.85 !important;
     box-shadow: 0 0 16px {t["accent"]}44 !important;
 }}
-
 button[kind="secondary"],
 .stButton > button[kind="secondary"],
 [data-testid="stBaseButton-secondary"] {{
@@ -536,15 +440,13 @@ button[kind="secondary"],
     border-radius: var(--mm-radius-sm) !important;
     transition: var(--mm-transition) !important;
 }}
-
 button[kind="secondary"]:hover,
-.stButton > button[kind="secondary"]:hover,
 [data-testid="stBaseButton-secondary"]:hover {{
     border-color: var(--mm-accent) !important;
     color: var(--mm-accent) !important;
 }}
 
-/* ── Text Inputs & Text Areas ─────────────────────────────────── */
+/* ── Inputs ────────────────────────────────────────────────── */
 [data-testid="stTextInput"] input,
 [data-testid="stTextArea"] textarea,
 .stTextInput input,
@@ -555,94 +457,59 @@ button[kind="secondary"]:hover,
     border-radius: var(--mm-radius-sm) !important;
     transition: var(--mm-transition) !important;
 }}
-
 [data-testid="stTextInput"] input:focus,
-[data-testid="stTextArea"] textarea:focus,
-.stTextInput input:focus,
-.stTextArea textarea:focus {{
+[data-testid="stTextArea"] textarea:focus {{
     border-color: var(--mm-accent) !important;
     box-shadow: 0 0 0 1px var(--mm-accent) !important;
 }}
-
 [data-testid="stTextInput"] input::placeholder,
 [data-testid="stTextArea"] textarea::placeholder {{
     color: var(--mm-text-secondary) !important;
     opacity: 0.6;
 }}
 
-/* ── Select Boxes ─────────────────────────────────────────────── */
+/* ── Selects ───────────────────────────────────────────────── */
 [data-testid="stSelectbox"] > div > div,
 .stSelectbox > div > div {{
     background-color: var(--mm-input-bg) !important;
     border-color: var(--mm-border) !important;
     color: var(--mm-text) !important;
 }}
-
 [data-testid="stSelectbox"] [data-baseweb="select"] {{
     background-color: var(--mm-input-bg) !important;
 }}
-
-/* Dropdown menu */
 [data-baseweb="popover"] {{
     background-color: var(--mm-card-bg) !important;
     border: 1px solid var(--mm-border) !important;
 }}
-
 [data-baseweb="popover"] li {{
     color: var(--mm-text) !important;
 }}
-
 [data-baseweb="popover"] li:hover {{
     background-color: var(--mm-bg-secondary) !important;
 }}
 
-/* ── Multiselect ──────────────────────────────────────────────── */
+/* ── Multiselect ───────────────────────────────────────────── */
 [data-testid="stMultiSelect"] > div > div {{
     background-color: var(--mm-input-bg) !important;
     border-color: var(--mm-border) !important;
 }}
-
 [data-testid="stMultiSelect"] [data-baseweb="tag"] {{
     background-color: {t["accent"]}22 !important;
     border-color: {t["accent"]}44 !important;
     color: var(--mm-accent) !important;
 }}
 
-/* ── Sliders ──────────────────────────────────────────────────── */
-[data-testid="stSlider"] [data-baseweb="slider"] div {{
-    color: var(--mm-text) !important;
-}}
-
+/* ── Sliders ───────────────────────────────────────────────── */
 [data-testid="stSlider"] [role="slider"] {{
     background-color: var(--mm-accent) !important;
 }}
 
-/* Slider track */
-[data-testid="stSlider"] > div > div > div > div {{
-    background: linear-gradient(
-        to right,
-        var(--mm-accent),
-        var(--mm-accent-secondary)
-    ) !important;
-}}
-
-/* ── Radio & Checkbox ─────────────────────────────────────────── */
-[data-testid="stRadio"] label,
-[data-testid="stCheckbox"] label {{
-    color: var(--mm-text) !important;
-}}
-
-[data-testid="stRadio"] label:hover,
-[data-testid="stCheckbox"] label:hover {{
-    color: var(--mm-accent) !important;
-}}
-
-/* ── Tabs ──────────────────────────────────────────────────────── */
+/* ── Tabs ──────────────────────────────────────────────────── */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {{
     background-color: transparent !important;
     gap: 4px;
 }}
-
 [data-testid="stTabs"] [data-baseweb="tab"] {{
     background-color: var(--mm-bg-secondary) !important;
     color: var(--mm-text-secondary) !important;
@@ -652,99 +519,60 @@ button[kind="secondary"]:hover,
     transition: var(--mm-transition) !important;
     padding: 8px 16px !important;
 }}
-
 [data-testid="stTabs"] [data-baseweb="tab"]:hover {{
     color: var(--mm-text) !important;
     background-color: var(--mm-card-bg) !important;
 }}
-
 [data-testid="stTabs"] [aria-selected="true"] {{
     background-color: var(--mm-card-bg) !important;
     color: var(--mm-accent) !important;
     border-color: var(--mm-accent) !important;
-    border-bottom: 2px solid var(--mm-card-bg) !important;
     font-weight: 600 !important;
 }}
-
-[data-testid="stTabs"] [data-baseweb="tab-panel"] {{
-    background-color: transparent !important;
-    padding-top: 16px;
-}}
-
-/* Tab bottom highlight strip */
 [data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
     background-color: var(--mm-accent) !important;
 }}
 
-/* ── Expanders ────────────────────────────────────────────────── */
+/* ── Expanders ─────────────────────────────────────────────── */
 [data-testid="stExpander"] {{
     background-color: var(--mm-card-bg) !important;
     border: 1px solid var(--mm-border) !important;
     border-radius: var(--mm-radius) !important;
     margin-bottom: 8px;
 }}
-
 [data-testid="stExpander"] summary {{
     color: var(--mm-text) !important;
 }}
-
 [data-testid="stExpander"] summary:hover {{
     color: var(--mm-accent) !important;
 }}
 
-[data-testid="stExpander"] [data-testid="stExpanderDetails"] {{
-    border-top: 1px solid var(--mm-border) !important;
-}}
-
-/* ── Metrics ──────────────────────────────────────────────────── */
+/* ── Metrics ───────────────────────────────────────────────── */
 [data-testid="stMetric"] {{
     background-color: var(--mm-card-bg);
     border: 1px solid var(--mm-border);
     border-radius: var(--mm-radius);
     padding: 12px 16px;
 }}
-
 [data-testid="stMetric"] label {{
     color: var(--mm-text-secondary) !important;
 }}
-
 [data-testid="stMetric"] [data-testid="stMetricValue"] {{
     color: var(--mm-text) !important;
     font-weight: 700;
 }}
 
-[data-testid="stMetric"] [data-testid="stMetricDelta"] svg {{
-    display: none;
-}}
-
-/* ── Progress Bars ────────────────────────────────────────────── */
+/* ── Progress Bars ─────────────────────────────────────────── */
 [data-testid="stProgress"] > div > div {{
     background-color: var(--mm-bg-secondary) !important;
     border-radius: 6px !important;
 }}
-
 [data-testid="stProgress"] > div > div > div {{
-    background: linear-gradient(
-        90deg,
-        var(--mm-accent),
-        var(--mm-accent-secondary)
-    ) !important;
+    background: linear-gradient(90deg, var(--mm-accent), var(--mm-accent-secondary)) !important;
     border-radius: 6px !important;
 }}
 
-/* ── Alerts (info, warning, error, success) ───────────────────── */
-[data-testid="stAlert"] {{
-    border-radius: var(--mm-radius-sm) !important;
-}}
-
-/* ── Dataframes ───────────────────────────────────────────────── */
-[data-testid="stDataFrame"],
-.stDataFrame {{
-    border: 1px solid var(--mm-border) !important;
-    border-radius: var(--mm-radius-sm) !important;
-}}
-
-/* ── Chat Messages ────────────────────────────────────────────── */
+/* ── Chat Messages ─────────────────────────────────────────── */
 [data-testid="stChatMessage"] {{
     background-color: var(--mm-card-bg) !important;
     border: 1px solid var(--mm-border) !important;
@@ -752,22 +580,15 @@ button[kind="secondary"]:hover,
     margin-bottom: 8px;
     padding: 12px 16px;
 }}
-
 [data-testid="stChatMessage"] p {{
     color: var(--mm-text) !important;
 }}
-
-/* Chat input */
-[data-testid="stChatInput"] {{
-    border-color: var(--mm-border) !important;
-}}
-
 [data-testid="stChatInput"] textarea {{
     background-color: var(--mm-input-bg) !important;
     color: var(--mm-text) !important;
 }}
 
-/* ── Download Buttons ─────────────────────────────────────────── */
+/* ── Download Buttons ──────────────────────────────────────── */
 [data-testid="stDownloadButton"] button {{
     background-color: var(--mm-accent) !important;
     color: {t["bg"]} !important;
@@ -776,245 +597,66 @@ button[kind="secondary"]:hover,
     font-weight: 600 !important;
 }}
 
-/* ── Date / Time Inputs ───────────────────────────────────────── */
+/* ── Date/Time/Number Inputs ───────────────────────────────── */
 [data-testid="stDateInput"] input,
-[data-testid="stTimeInput"] input {{
-    background-color: var(--mm-input-bg) !important;
-    color: var(--mm-text) !important;
-    border-color: var(--mm-border) !important;
-}}
-
-/* ── Number Input ─────────────────────────────────────────────── */
+[data-testid="stTimeInput"] input,
 [data-testid="stNumberInput"] input {{
     background-color: var(--mm-input-bg) !important;
     color: var(--mm-text) !important;
     border-color: var(--mm-border) !important;
 }}
 
-/* ── Plotly Charts (transparent wrapper) ──────────────────────── */
-.js-plotly-plot .plotly {{
-    border-radius: var(--mm-radius) !important;
-}}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   SCROLLBARS
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Scrollbars ────────────────────────────────────────────── */
 ::-webkit-scrollbar {{
     width: 8px;
     height: 8px;
 }}
-
 ::-webkit-scrollbar-track {{
     background: var(--mm-bg-secondary);
 }}
-
 ::-webkit-scrollbar-thumb {{
     background: var(--mm-border);
     border-radius: 4px;
 }}
-
 ::-webkit-scrollbar-thumb:hover {{
     background: var(--mm-accent);
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   TOOLTIPS & POPOVERS
-   ═══════════════════════════════════════════════════════════════ */
-
-[data-baseweb="tooltip"] {{
-    background-color: var(--mm-card-bg) !important;
-    color: var(--mm-text) !important;
-    border: 1px solid var(--mm-border) !important;
-    border-radius: var(--mm-radius-sm) !important;
-}}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   FOCUS OUTLINES (Accessibility)
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Focus Outlines ────────────────────────────────────────── */
 *:focus-visible {{
     outline: 2px solid var(--mm-accent) !important;
     outline-offset: 2px !important;
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   RESPONSIVE BREAKPOINTS
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 768px) {{
     .main .block-container {{
         padding-left: 1rem;
         padding-right: 1rem;
     }}
-
     .mm-card {{
         padding: 14px;
     }}
-
-    [data-testid="stMetric"] {{
-        padding: 8px 10px;
-    }}
-
-    /* Stack columns on mobile */
     [data-testid="stHorizontalBlock"] {{
         flex-wrap: wrap !important;
     }}
-
     [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
         min-width: 100% !important;
     }}
 }}
-
 @media (max-width: 480px) {{
-    h1 {{
-        font-size: 1.5em !important;
-    }}
-    h2 {{
-        font-size: 1.3em !important;
-    }}
-    h3 {{
-        font-size: 1.15em !important;
-    }}
-
+    h1 {{ font-size: 1.5em !important; }}
+    h2 {{ font-size: 1.3em !important; }}
+    h3 {{ font-size: 1.15em !important; }}
     .mm-emotion-tag {{
         font-size: 0.75em;
         padding: 2px 8px;
     }}
 }}
 
-
-/* ═══════════════════════════════════════════════════════════════
-   PRINT STYLES
-   ═══════════════════════════════════════════════════════════════ */
-
+/* ── Print ─────────────────────────────────────────────────── */
 @media print {{
     [data-testid="stSidebar"],
     [data-testid="stToolbar"],
     [data-testid="stStatusWidget"],
-    .stButton,
-    .stDownloadButton,
-    [data-testid="stChatInput"] {{
-        display: none !important;
-    }}
-
-    html, body, [data-testid="stAppViewContainer"] {{
-        background: white !important;
-        color: black !important;
-    }}
-
-    .mm-card {{
-        background: white !important;
-        border: 1px solid #ccc !important;
-        box-shadow: none !important;
-        break-inside: avoid;
-    }}
-
-    .mm-celebration {{
-        background: #f0f0f0 !important;
-        border: 1px solid #ccc !important;
-        animation: none !important;
-    }}
-
-    .mm-crisis-banner {{
-        border: 2px solid #cc0000 !important;
-        background: #fff0f0 !important;
-    }}
-
-    h1, h2, h3, h4, h5, h6 {{
-        color: black !important;
-    }}
-
-    a {{
-        color: #0066cc !important;
-    }}
-
-    /* Show link URLs in print */
-    a[href]::after {{
-        content: " (" attr(href) ")";
-        font-size: 0.8em;
-        color: #666;
-    }}
-}}
-
-"""
-
-    # ── High Contrast additions ──────────────────────────────────
-    if high_contrast:
-        css += f"""
-
-/* ═══════════════════════════════════════════════════════════════
-   HIGH CONTRAST OVERRIDES
-   ═══════════════════════════════════════════════════════════════ */
-
-.mm-card {{
-    border-width: 2px !important;
-}}
-
-.mm-emotion-tag {{
-    border-width: 2px !important;
-    font-weight: 700 !important;
-}}
-
-[data-testid="stExpander"] {{
-    border-width: 2px !important;
-}}
-
-[data-testid="stMetric"] {{
-    border-width: 2px !important;
-}}
-
-button[kind="primary"],
-[data-testid="stBaseButton-primary"] {{
-    font-weight: 800 !important;
-    letter-spacing: 0.02em;
-}}
-
-button[kind="secondary"],
-[data-testid="stBaseButton-secondary"] {{
-    border-width: 2px !important;
-    font-weight: 700 !important;
-}}
-
-/* Force maximum contrast on text */
-p, li, span, div, label {{
-    color: {text_main} !important;
-}}
-
-small, .stCaption, [data-testid="stCaptionContainer"] {{
-    color: {text_sec} !important;
-    font-weight: 500 !important;
-}}
-
-"""
-
-    # ── Reduced Motion additions ─────────────────────────────────
-    if reduce_motion:
-        css += """
-
-/* ═══════════════════════════════════════════════════════════════
-   REDUCED MOTION
-   ═══════════════════════════════════════════════════════════════ */
-
-*, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-}
-
-.mm-celebration {
-    animation: none !important;
-    box-shadow: none !important;
-}
-
-"""
-
-    css += "\n</style>"
-
-    # ── Inject ───────────────────────────────────────────────────
-    st.markdown(css, unsafe_allow_html=True)
+    .
