@@ -49,6 +49,13 @@ from database import (
     get_crisis_logs,
 )
 
+# backup and database imports
+from backup import (
+    show_persistence_warning,
+    show_backup_reminder_if_needed,
+    show_restore_widget,
+)
+
 # ── Analyzer ────────────────────────────────────────────────────────
 from analyzer import (
     sentiment_score,
@@ -447,6 +454,10 @@ def render_sidebar():
         # ── User identity ────────────────────────────────────────
         st.markdown(f"#### 👤 {st.session_state.username}")
         st.caption(f"📊 {ec} journal entries saved")
+
+                # ── Persistence warning ──────────────────────────────────
+        show_persistence_warning()
+        show_backup_reminder_if_needed()
 
         # ── Status badges ────────────────────────────────────────
         badge_cols = st.columns(2)
@@ -3948,11 +3959,20 @@ def page_history():
 
     uid = st.session_state.user_id
 
-    tab_analyses, tab_chats, tab_export = st.tabs([
+    tab_analyses, tab_chats, tab_export, tab_restore = st.tabs([
         "📊 Saved Analyses",
         "💬 Chat Sessions",
         "📥 Export Data",
+        "📥 Restore Backup",
     ])
+        
+        # ═════════════════════════════════════════════════════════════
+    #  TAB 4: RESTORE FROM BACKUP
+    # ═════════════════════════════════════════════════════════════
+    with tab_restore:
+        show_restore_widget(uid)    
+        
+    
 
     # ═════════════════════════════════════════════════════════════
     #  TAB 1: SAVED ANALYSES
