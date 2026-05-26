@@ -1983,7 +1983,8 @@ def _build_chat_context(entries, history, chat_mode="open",
 
 def ai_chat(message, entries, history, api_key,
             model="gemini-2.5-flash", chat_mode="open",
-            empathy_level=0.5, psyche_profile=None, goals=None):
+            empathy_level=0.5, psyche_profile=None, goals=None,
+            recent_analysis_summary=None):
     """Send a chat message to Gemini with full context."""
 
     # ── Crisis check ─────────────────────────────────────────────
@@ -2010,7 +2011,7 @@ End with something genuine like: "I'm glad you're talking about this. That takes
     # ── Build context ────────────────────────────────────────────
     system_context = _build_chat_context(
         entries, history, chat_mode, empathy_level, psyche_profile,
-        goals=goals,
+        goals=goals, recent_analysis_summary=recent_analysis_summary,
     )
 
     # Build conversation

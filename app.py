@@ -55,6 +55,10 @@ from database import (
     get_crisis_logs,
     has_checked_in_today,
     get_today_checkin,
+    record_ai_call,
+    count_recent_ai_calls,
+    record_login_attempt,
+    count_recent_login_attempts,
 )
 
 # backup and database imports
@@ -174,42 +178,30 @@ for _k, _v in _DEFAULTS.items():
 # ═══════════════════════════════════════════════════════════════════
 
 def _sanitize_input(text: str) -> str:
-    """Strip dangerous HTML tags and event handler attributes from user input.
-    Preserves normal text content while removing script/iframe injections."""
+    """Strip all HTML tags and javascript: URIs from user input.
+    This is a journaling app - there is no legitimate reason for users to submit HTML."""
     if not text:
         return text
-    # Remove <script>...</script> blocks
-    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.IGNORECASE | re.DOTALL)
-    # Remove <iframe>...</iframe> blocks
-    text = re.sub(r"<iframe[^>]*>.*?</iframe>", "", text, flags=re.IGNORECASE | re.DOTALL)
-    # Remove standalone <script> or <iframe> tags (unclosed)
-    text = re.sub(r"</?script[^>]*>", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"</?iframe[^>]*>", "", text, flags=re.IGNORECASE)
-    # Remove event handler attributes (on*)
-    text = re.sub(r"\bon\w+\s*=\s*[\"'][^\"']*[\"']", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\bon\w+\s*=\s*\S+", "", text, flags=re.IGNORECASE)
+    # Strip all HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Remove javascript: URIs
+    text = re.sub(r"javascript\s*:", "", text, flags=re.IGNORECASE)
     return text.strip()
 
 
 def _check_rate_limit() -> bool:
     """Check if the user is within the AI call rate limit.
-    Allows 20 AI calls per 10 minutes. Returns True if allowed."""
-    if "_ai_call_times" not in st.session_state:
-        st.session_state["_ai_call_times"] = []
-
-    now = datetime.now()
-    window = timedelta(minutes=10)
-
-    # Prune timestamps older than the window
-    st.session_state["_ai_call_times"] = [
-        t for t in st.session_state["_ai_call_times"]
-        if now - t < window
-    ]
-
-    if len(st.session_state["_ai_call_times"]) >= 20:
+    Allows 20 AI calls per 10 minutes. Uses database for persistence.
+    Returns True if allowed."""
+    user_id = st.session_state.get("user_id")
+    if not user_id:
         return False
 
-    st.session_state["_ai_call_times"].append(now)
+    recent_count = count_recent_ai_calls(user_id, minutes=10)
+    if recent_count >= 20:
+        return False
+
+    record_ai_call(user_id)
     return True
 
 
@@ -489,14 +481,19 @@ def render_sidebar():
                 ):
                     _clean_user = _sanitize_input(login_user.strip())
                     if _clean_user and login_pass:
-                        uid = verify_user(_clean_user, login_pass)
-                        if uid is not None:
-                            st.session_state.username = _clean_user
-                            st.session_state.user_id = uid
-                            st.session_state.logged_in = True
-                            st.rerun()
+                        # Check brute-force protection
+                        if count_recent_login_attempts(_clean_user, minutes=15) >= 5:
+                            st.error("Too many attempts. Try again in a few minutes.")
                         else:
-                            st.error("Wrong username or password. Try again.")
+                            uid = verify_user(_clean_user, login_pass)
+                            if uid is not None:
+                                st.session_state.username = _clean_user
+                                st.session_state.user_id = uid
+                                st.session_state.logged_in = True
+                                st.rerun()
+                            else:
+                                record_login_attempt(_clean_user)
+                                st.error("Wrong username or password. Try again.")
                     else:
                         st.warning("Need both a username and password.")
 
@@ -871,7 +868,8 @@ def _entry_mood_icon(sentiment) -> str:
 
 def _streak(entries: List[Dict]) -> int:
     """Calculate the current consecutive-day journaling streak.
-    Allows a single 1-day grace period (one missed day keeps the streak)."""
+    Allows a single 1-day grace period (one missed day keeps the streak).
+    Returns 0 if most recent entry is older than 2 days from today."""
     dates = sorted(set(
         e.get("entry_date", "")[:10]
         for e in entries
@@ -879,8 +877,25 @@ def _streak(entries: List[Dict]) -> int:
     ))
     if not dates:
         return 0
+
+    # Anchor to today: check if most recent entry is within range
+    today = datetime.now().date()
+    try:
+        most_recent = datetime.strptime(dates[-1], "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+
+    days_since_last = (today - most_recent).days
+    # If most recent entry is more than 2 days ago, streak is broken
+    if days_since_last > 2:
+        return 0
+    # If most recent is exactly 2 days ago, only valid with grace
+    if days_since_last == 2:
+        # Grace allows this, but we start counting from here
+        pass
+
     streak = 1
-    grace_used = False
+    grace_used = days_since_last == 2  # Grace already used if last entry is 2 days ago
     for i in range(len(dates) - 1, 0, -1):
         try:
             d1 = datetime.strptime(dates[i], "%Y-%m-%d")
@@ -2699,7 +2714,12 @@ def page_chat():
         st.info("No messages to summarise yet.")
 
     # ── Chat input ───────────────────────────────────────────────
-    if prompt := st.chat_input("Tell me what's on your mind…"):
+    # Check for retry of a failed message
+    _retry_prompt = st.session_state.pop("_chat_retry_msg", None)
+
+    if _retry_prompt or (prompt := st.chat_input("Tell me what's on your mind…")):
+        if _retry_prompt:
+            prompt = _retry_prompt
         prompt = _sanitize_input(prompt)
 
         # ── Crisis detection ─────────────────────────────────────
@@ -2753,10 +2773,12 @@ def page_chat():
                         ),
                         psyche_profile=get_psyche_profile(uid),
                         goals=active_goals,
+                        recent_analysis_summary=analysis_summary,
                     )
 
                 _chat_err, reply = _handle_ai_response(reply, "Chat")
                 if _chat_err:
+                    st.session_state["_chat_retry_msg"] = prompt
                     if st.button("🔄 Retry", key="_chat_retry"):
                         st.rerun()
                 else:

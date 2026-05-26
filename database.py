@@ -148,6 +148,24 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS rate_limits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            call_type TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            attempt_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -654,24 +672,22 @@ def get_crisis_logs(user_id) -> List[Dict]:
 # ───────────────────────────────────────────────────────────────────
 
 def has_checked_in_today(user_id) -> bool:
-    """Return True if the user has a daily_checkin for today."""
+    """Return True if the user has a daily_checkin for today (UTC)."""
     conn = _connect()
-    today = datetime.now().strftime("%Y-%m-%d")
     row = conn.execute(
-        "SELECT id FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND created_at LIKE ?",
-        (user_id, f"{today}%"),
+        "SELECT id FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND date(created_at) = date('now')",
+        (user_id,),
     ).fetchone()
     conn.close()
     return row is not None
 
 
 def get_today_checkin(user_id) -> Optional[Dict]:
-    """Return the user's daily check-in for today, or None."""
+    """Return the user's daily check-in for today (UTC), or None."""
     conn = _connect()
-    today = datetime.now().strftime("%Y-%m-%d")
     row = conn.execute(
-        "SELECT * FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND created_at LIKE ? ORDER BY created_at DESC LIMIT 1",
-        (user_id, f"{today}%"),
+        "SELECT * FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND date(created_at) = date('now') ORDER BY created_at DESC LIMIT 1",
+        (user_id,),
     ).fetchone()
     conn.close()
     if row:
@@ -682,3 +698,55 @@ def get_today_checkin(user_id) -> Optional[Dict]:
             d["scores"] = []
         return d
     return None
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Rate Limiting (server-side, per-user)
+# ───────────────────────────────────────────────────────────────────
+
+def record_ai_call(user_id) -> None:
+    """Record an AI call timestamp for the given user."""
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO rate_limits (user_id, call_type) VALUES (?, 'ai_call')",
+        (user_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def count_recent_ai_calls(user_id, minutes: int = 10) -> int:
+    """Count AI calls by a user within the last N minutes."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM rate_limits WHERE user_id = ? AND call_type = 'ai_call' AND created_at > datetime('now', ?)",
+        (user_id, f"-{minutes} minutes"),
+    ).fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Login Attempt Tracking (brute-force protection)
+# ───────────────────────────────────────────────────────────────────
+
+def record_login_attempt(username: str) -> None:
+    """Record a failed login attempt for the given username."""
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO login_attempts (username) VALUES (?)",
+        (username,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def count_recent_login_attempts(username: str, minutes: int = 15) -> int:
+    """Count failed login attempts for a username within the last N minutes."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM login_attempts WHERE username = ? AND attempt_at > datetime('now', ?)",
+        (username, f"-{minutes} minutes"),
+    ).fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
