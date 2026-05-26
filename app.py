@@ -2185,7 +2185,7 @@ def page_analysis():
         fig.update_traces(line=dict(width=3), marker=dict(size=7))
         fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.4)
         fig = _plotly_layout(fig, "")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # ── 8. Emotion Network ───────────────────────────────────────
     network = la.get("emotion_network")
@@ -2203,7 +2203,7 @@ def page_analysis():
             )
             fig = _plotly_layout(fig, "Emotion Frequency")
             fig.update_layout(showlegend=False, yaxis_autorange="reversed")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             # Co-occurrence table
             if edges:
@@ -2212,7 +2212,7 @@ def page_analysis():
                     {"Emotion A": e["source"], "Emotion B": e["target"], "Times": e["weight"]}
                     for e in edges[:10]
                 ]
-                st.dataframe(pd.DataFrame(edge_data), use_container_width=True)
+                st.dataframe(pd.DataFrame(edge_data), width="stretch")
 
     # ── 9. Trigger Radar ─────────────────────────────────────────
     triggers = la.get("triggers", [])
@@ -2236,7 +2236,7 @@ def page_analysis():
         )
         fig = _plotly_layout(fig, "")
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # ── 10. Day-of-Week Patterns ─────────────────────────────────
     dow = la.get("day_of_week_patterns", {})
@@ -2264,7 +2264,7 @@ def page_analysis():
         fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.4)
         fig = _plotly_layout(fig, "")
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         best = max(dow.items(), key=lambda x: x[1])
         worst = min(dow.items(), key=lambda x: x[1])
@@ -2298,7 +2298,7 @@ def page_analysis():
                 },
             )
             fig = _plotly_layout(fig, "")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # ── 12. Weekly Heatmap ───────────────────────────────────────
     heatmap = la.get("weekly_heatmap", [])
@@ -2327,7 +2327,7 @@ def page_analysis():
                 labels={"x": "Day", "y": "Hour", "color": "Sentiment"},
             )
             fig = _plotly_layout(fig, "")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # ── 13. Collapsible charts: words, emotions, topics, people ──
     chart_row1, chart_row2 = st.columns(2)
@@ -2345,7 +2345,7 @@ def page_analysis():
                     hole=0.4,
                 )
                 fig = _plotly_layout(fig, "")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         # Word frequency
         words = la.get("words", [])
@@ -2360,7 +2360,7 @@ def page_analysis():
                 )
                 fig = _plotly_layout(fig, "")
                 fig.update_layout(showlegend=False, yaxis_autorange="reversed")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
     with chart_row2:
         # Topics
@@ -2374,7 +2374,7 @@ def page_analysis():
                     color_discrete_sequence=_pcolors(),
                 )
                 fig = _plotly_layout(fig, "")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         # People
         people = la.get("people", [])
@@ -3170,7 +3170,7 @@ def page_dashboard():
                 y=1.02, xanchor="right", x=1,
             ),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.caption(
             "Not enough mood/energy data yet. "
@@ -3241,7 +3241,7 @@ def page_dashboard():
             ),
             showlegend=False,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     elif emo_counts:
         st.caption(
             f"Detected {len(emo_counts)} emotion(s) so far. "
@@ -3313,7 +3313,7 @@ def page_dashboard():
 
         radar_col, score_col = st.columns([2, 1])
         with radar_col:
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         with score_col:
             st.markdown(
                 f'<div class="mm-card">'
@@ -3535,7 +3535,7 @@ def page_dashboard():
             xaxis_title="Week Number",
             yaxis_title="",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.caption(
             "Journal for a few more days to see your mood calendar."
@@ -3676,7 +3676,7 @@ def page_dashboard():
                 fig.add_hrect(y0=5, y1=9, fillcolor="#F1C40F", opacity=0.1)
                 fig.add_hrect(y0=10, y1=14, fillcolor="#E67E22", opacity=0.1)
                 fig.add_hrect(y0=15, y1=27, fillcolor="#E74C3C", opacity=0.1)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             if gad_history:
                 st.markdown("**GAD-7 History:**")
@@ -3697,7 +3697,7 @@ def page_dashboard():
                 fig.add_hrect(y0=5, y1=9, fillcolor="#F1C40F", opacity=0.1)
                 fig.add_hrect(y0=10, y1=14, fillcolor="#E67E22", opacity=0.1)
                 fig.add_hrect(y0=15, y1=21, fillcolor="#E74C3C", opacity=0.1)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             if pulse_history:
                 st.markdown("**Quick Pulse History:**")
