@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Tone overhaul: Rewrite all AI prompts, system messages, and UI copy to sound warm, human, and conversational - like a smart caring friend, not a clinical robot. Fix the indentation bug in page_history().",
+  "status": "completed",
+  "steps": [
+    "In analyzer.py - CHAT_MODE_PROMPTS: Rewrite all 5 system prompts (open, cbt, validation, reflection, homework) to use simple, warm English. Remove therapy jargon. Example: instead of 'utilize cognitive behavioral therapy techniques' say 'help them look at their thoughts from different angles'. The AI should sound like a perceptive friend who reads a lot, not a therapist reading from a textbook.",
+    "In analyzer.py - ai_analysis prompt: Rewrite the massive system prompt. Keep the same structure (9 sections) but make instructions warmer. Replace 'produce a comprehensive report' with 'write like you are explaining patterns to a friend over coffee'. Replace 'cognitive patterns' heading with 'How you tend to think'. Replace 'behavioral cycles' with 'Your patterns and habits'. Use plain English throughout.",
+    "In analyzer.py - ai_chat crisis response prompt: Make it warmer and less clinical. Replace 'compassionate crisis support AI' with simpler framing. The response should feel like a caring friend who is worried, not a hotline script.",
+    "In analyzer.py - _build_chat_context: Rewrite the TONE descriptions and RESPONSE GUIDELINES to use natural language. Replace 'emotional distress' with 'hard time'. Replace 'grounding' with 'something to steady you'. Replace 'validate feelings' with 'let them know what they feel makes sense'.",
+    "In analyzer.py - ai_reflection_prompts: Rewrite prompt to ask for prompts that sound like a curious friend asking good questions, not a worksheet.",
+    "In analyzer.py - generate_session_summary and generate_narrative_summary: Rewrite prompts to produce output that reads like a thoughtful letter from a friend, not a clinical session note.",
+    "In analyzer.py - ai_distortion_analysis and ai_mood_forecast: Rewrite to use plain English. 'Cognitive distortions' becomes 'thinking traps' or 'mental habits'. 'Emotional weather forecast' framing is good - keep it but make language simpler.",
+    "In analyzer.py - CONSENT_NOTICE_ANALYSIS and CONSENT_NOTICE_CHAT: Rewrite to be shorter and friendlier. Example: 'Heads up: this sends your writing to Google Gemini for the AI to read. Nothing is stored after.' instead of the formal notice.",
+    "In app.py - All UI copy: Rewrite page titles, descriptions, captions, warnings, and success messages throughout the file to sound human and warm. Key areas: page_journal intro, page_analysis intro, page_chat intro, page_dashboard greeting logic, page_skills intro, page_history intro, page_settings intro, onboarding wizard text, crisis support text, sidebar text.",
+    "In app.py - page_history(): Fix the indentation bug where 'with tab_restore:' block is at incorrect indent level (it is at module level instead of inside the function, causing the tabs to break). Move it inside the function at the correct indentation alongside the other tab blocks.",
+    "In app.py - Celebration messages in generate_micro_celebration (analyzer.py): Make them sound more natural and less like achievement notifications. Example: instead of 'Your future self is sending you a thank-you note' use something like 'A week of showing up for yourself. That takes something.'",
+    "In app.py - Error messages and warnings: Replace generic 'Write something first.' with warmer alternatives like 'Nothing here yet - what is on your mind?' Replace 'Please type a name.' with 'Pick a name so we know what to call you.'"
+  ],
+  "acceptance_criteria": [
+    "All AI prompts use simplified, warm English without therapy jargon",
+    "UI copy throughout the app sounds conversational and human",
+    "The page_history indentation bug is fixed (tab_restore works correctly)",
+    "Crisis support messages are warm but not clinical",
+    "All modules still import without errors",
+    "No functional behavior is changed - only wording"
+  ],
+  "verification": [
+    "Run python -m py_compile app.py && python -m py_compile analyzer.py to verify no syntax errors",
+    "Run python -c \"from analyzer import CHAT_MODE_PROMPTS, CONSENT_NOTICE_ANALYSIS; print(CONSENT_NOTICE_ANALYSIS)\" and verify it reads naturally",
+    "Run python -c \"import app; print('app.py imports cleanly')\" to confirm the indentation fix works"
+  ],
+  "blocked_reason": null,
+  "findings": "All tone changes applied successfully. The indentation bug in page_history() was caused by the tab_restore block being placed immediately after the st.tabs() call with wrong indentation (at column 8 instead of 4) and before the other tab blocks. Fixed by removing it from the incorrect position and adding it at the end of the function at proper indent level after tab_export. All verification passes - py_compile clean, all modules import without errors. Streamlit ScriptRunContext warnings during bare import are expected and documented in FEAT-001."
+}

@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-005",
+  "type": "fix",
+  "description": "Fix all 7 issues identified in the code review: persistent rate limiting, login brute-force protection, complete XSS sanitization, analysis context wiring to chat, streak anchor to today, UTC/local check-in mismatch, and functional retry button.",
+  "status": "completed",
+  "steps": [
+    "Issue 1: Move rate limiting to database. Add rate_limits table. Add record_ai_call and count_recent_ai_calls to database.py. Update _check_rate_limit in app.py to use database.",
+    "Issue 2: Add login_attempts table. Add record_login_attempt and count_recent_login_attempts to database.py. Add brute-force check in app.py login logic.",
+    "Issue 3: Replace denylist sanitization with full HTML tag strip using re.sub(r'<[^>]+>', '', text). Also strip javascript: URIs.",
+    "Issue 4: Add recent_analysis_summary parameter to ai_chat and pass it through to _build_chat_context. Pass analysis_summary in app.py page_chat.",
+    "Issue 5: Anchor streak to today by checking if most recent entry is within 2 days of today before counting.",
+    "Issue 6: Fix has_checked_in_today and get_today_checkin to use date(created_at) = date('now') for UTC consistency.",
+    "Issue 7: Store failed prompt in session_state and re-attempt on retry instead of just calling st.rerun()."
+  ],
+  "acceptance_criteria": [
+    "Rate limiting persists across page refreshes via database",
+    "Login blocked after 5 failed attempts in 15 minutes",
+    "All HTML tags stripped from user input",
+    "Analysis context reaches AI chat",
+    "Streak returns 0 when most recent entry is older than 2 days",
+    "Check-in detection works consistently regardless of timezone",
+    "Retry button re-sends the last failed prompt"
+  ],
+  "verification": [
+    "python -m py_compile app.py",
+    "python -m py_compile analyzer.py",
+    "python -m py_compile database.py"
+  ],
+  "blocked_reason": null,
+  "findings": "All 7 review issues fixed and verified. py_compile passes for all 3 files. Database functions tested (rate_limits, login_attempts tables created). Streak logic verified with 5 test cases including broken streak and grace period scenarios. Sanitization tested against img/svg/iframe/script/javascript: vectors. ai_chat signature confirmed to include recent_analysis_summary parameter."
+}

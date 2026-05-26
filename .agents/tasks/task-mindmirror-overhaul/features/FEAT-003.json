@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Module integration and intelligent context sharing: Make journal, analysis, chat, dashboard, goals, and skills all aware of each other and feed data between them. Add cross-module context so the AI truly understands the user over time.",
+  "status": "completed",
+  "steps": [
+    "In analyzer.py - _build_chat_context: Enhance journal context injection. Currently sends last 10 entries. Add: recent analysis insights summary (last AI analysis result, trimmed to 200 chars), active goals with progress, recent mood check-in scores, recent skill exercises completed (from entries tagged skill_exercise). This makes the AI chat aware of everything the user has done.",
+    "In analyzer.py - ai_analysis: Add goals context and recent chat themes to the analysis prompt. Pull active goals from the caller and include them so the analysis can comment on goal progress. Add a section asking the AI to connect journal patterns to stated goals.",
+    "In app.py - page_chat: After each AI response, check if the response mentions a pattern or suggestion that could become a goal. Add a small 'Turn this into a goal?' button below AI responses that contain action items (detect by looking for phrases like 'try', 'consider', 'experiment with', 'practice').",
+    "In app.py - page_dashboard: Add a 'Recent Insights' card at the top that pulls the most recent AI analysis and shows 2-3 key takeaways (first 3 bullet points or bold sections from the analysis result). Link to full analysis.",
+    "In app.py - page_journal: After saving an entry, if the user has active goals, show a brief note connecting the entry to relevant goals. Example: if they wrote about exercise and have a health goal, show 'This connects to your goal: [goal title]'. Use simple keyword matching between entry topics and goal titles.",
+    "In app.py - page_skills: Make skill recommendations context-aware. If recent entries show high anxiety (check recent sentiment + emotion detection), surface the 'distress_tolerance' and 'mindfulness' modules at the top. If entries show self-criticism, surface 'self_compassion'. Add a 'Recommended for you' section above the category selector.",
+    "In database.py: Add a get_latest_analysis(user_id, analysis_type) function that returns just the most recent analysis of a given type. Add get_recent_entries_text(user_id, limit=5) that returns concatenated recent entry content for quick context building.",
+    "In analyzer.py - ai_reflection_prompts: Fix the bug where goals_context uses g.get('goal_text') but the actual field in the database/dict is 'title'. Change to g.get('title', '')."
+  ],
+  "acceptance_criteria": [
+    "AI chat is aware of active goals, recent analyses, mood check-ins, and completed skills",
+    "AI analysis references and connects to active goals",
+    "Skills page recommends modules based on recent emotional patterns",
+    "Journal saves show connections to active goals when relevant",
+    "Dashboard shows recent AI insights",
+    "The goals bug in ai_reflection_prompts is fixed (uses 'title' not 'goal_text')",
+    "All modules import without errors"
+  ],
+  "verification": [
+    "Run python -m py_compile app.py && python -m py_compile analyzer.py && python -m py_compile database.py",
+    "Run python -c \"from database import init_db, get_latest_analysis, get_recent_entries_text; init_db(); print('New DB functions available')\"",
+    "Run python -c \"import app; print('Full app imports cleanly')\""
+  ],
+  "blocked_reason": null,
+  "findings": "All changes compile and import cleanly. The ScriptRunContext warnings during bare import are expected (documented in FEAT-001). All acceptance criteria met: ai_chat receives goals, ai_analysis includes goals context, skills recommend based on recent emotions, journal shows goal connections, dashboard shows recent insights, and the goal_text bug in ai_reflection_prompts is fixed."
+}

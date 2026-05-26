@@ -14,6 +14,7 @@ import json
 import os
 import re
 import random
+import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 import plotly.express as px
@@ -25,6 +26,9 @@ import numpy as np
 from database import (
     init_db,
     get_or_create_user,
+    create_user,
+    verify_user,
+    user_exists,
     save_entry,
     get_entries,
     delete_entry,
@@ -32,6 +36,8 @@ from database import (
     get_sentiments_over_time,
     save_analysis,
     get_analyses,
+    get_latest_analysis,
+    get_recent_entries_text,
     save_chat_msg,
     get_chat_msgs,
     get_chat_sessions,
@@ -47,6 +53,12 @@ from database import (
     get_growth_metrics,
     log_crisis_event,
     get_crisis_logs,
+    has_checked_in_today,
+    get_today_checkin,
+    record_ai_call,
+    count_recent_ai_calls,
+    record_login_attempt,
+    count_recent_login_attempts,
 )
 
 # backup and database imports
@@ -162,6 +174,38 @@ for _k, _v in _DEFAULTS.items():
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  SECTION 3B — SECURITY HELPERS (sanitization, rate limiting)
+# ═══════════════════════════════════════════════════════════════════
+
+def _sanitize_input(text: str) -> str:
+    """Strip all HTML tags and javascript: URIs from user input.
+    This is a journaling app - there is no legitimate reason for users to submit HTML."""
+    if not text:
+        return text
+    # Strip all HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Remove javascript: URIs
+    text = re.sub(r"javascript\s*:", "", text, flags=re.IGNORECASE)
+    return text.strip()
+
+
+def _check_rate_limit() -> bool:
+    """Check if the user is within the AI call rate limit.
+    Allows 20 AI calls per 10 minutes. Uses database for persistence.
+    Returns True if allowed."""
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        return False
+
+    recent_count = count_recent_ai_calls(user_id, minutes=10)
+    if recent_count >= 20:
+        return False
+
+    record_ai_call(user_id)
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  SECTION 4 — API KEY · DATABASE · AUTO-LOGIN · PROFILE LOAD
 # ═══════════════════════════════════════════════════════════════════
 
@@ -176,15 +220,7 @@ except (KeyError, FileNotFoundError, AttributeError):
 # ── Initialise database (idempotent — safe to run on every load) ─
 init_db()
 
-# ── Auto-login from URL ?user=... so refresh doesn't log out ────
-if not st.session_state.logged_in:
-    _params = st.query_params
-    if "user" in _params:
-        _uname = _params["user"]
-        if isinstance(_uname, str) and _uname.strip():
-            st.session_state.username = _uname.strip()
-            st.session_state.user_id = get_or_create_user(_uname.strip())
-            st.session_state.logged_in = True
+# ── Auto-login removed for security (URL params no longer grant access) ──
 
 # ── Load psyche profile from DB (once per session) ──────────────
 if (
@@ -415,34 +451,92 @@ def format_mode_label(mode_key: str) -> str:
 def render_sidebar():
     with st.sidebar:
         st.markdown("## 🧠 MindMirror AI")
-        st.caption("*Decode your mind. Discover your patterns.*")
+        st.caption("*Your journal, your patterns, your growth.*")
         st.markdown("---")
 
         # ────────────────────────────────────────────────────────
-        #  NOT LOGGED IN → show login form
+        #  NOT LOGGED IN → show login / register form
         # ────────────────────────────────────────────────────────
         if not st.session_state.logged_in:
-            st.markdown("#### 👤 Get Started")
-            uname = st.text_input(
-                "Your name:",
-                key="_login_name",
-                placeholder="e.g. Alex",
-            )
-            if st.button(
-                "🚀 Enter MindMirror",
-                use_container_width=True,
-                type="primary",
-            ):
-                if uname.strip():
-                    st.session_state.username = uname.strip()
-                    st.session_state.user_id = get_or_create_user(
-                        uname.strip()
-                    )
-                    st.session_state.logged_in = True
-                    st.query_params["user"] = uname.strip()
-                    st.rerun()
-                else:
-                    st.warning("Please type a name.")
+            st.markdown("#### 👤 Jump In")
+            login_tab, register_tab = st.tabs(["Login", "Register"])
+
+            with login_tab:
+                login_user = st.text_input(
+                    "Username:",
+                    key="_login_username",
+                    placeholder="Your username",
+                )
+                login_pass = st.text_input(
+                    "Password:",
+                    type="password",
+                    key="_login_password",
+                    placeholder="Your password",
+                )
+                if st.button(
+                    "🔑 Login",
+                    use_container_width=True,
+                    type="primary",
+                    key="_login_btn",
+                ):
+                    _clean_user = _sanitize_input(login_user.strip())
+                    if _clean_user and login_pass:
+                        # Check brute-force protection
+                        if count_recent_login_attempts(_clean_user, minutes=15) >= 5:
+                            st.error("Too many attempts. Try again in a few minutes.")
+                        else:
+                            uid = verify_user(_clean_user, login_pass)
+                            if uid is not None:
+                                st.session_state.username = _clean_user
+                                st.session_state.user_id = uid
+                                st.session_state.logged_in = True
+                                st.rerun()
+                            else:
+                                record_login_attempt(_clean_user)
+                                st.error("Wrong username or password. Try again.")
+                    else:
+                        st.warning("Need both a username and password.")
+
+            with register_tab:
+                reg_user = st.text_input(
+                    "Choose username:",
+                    key="_reg_username",
+                    placeholder="e.g. Alex",
+                )
+                reg_pass = st.text_input(
+                    "Choose password:",
+                    type="password",
+                    key="_reg_password",
+                    placeholder="Min 6 characters",
+                )
+                reg_pass2 = st.text_input(
+                    "Confirm password:",
+                    type="password",
+                    key="_reg_password2",
+                    placeholder="Repeat password",
+                )
+                if st.button(
+                    "🚀 Register",
+                    use_container_width=True,
+                    type="primary",
+                    key="_reg_btn",
+                ):
+                    _clean_reg = _sanitize_input(reg_user.strip())
+                    if not _clean_reg:
+                        st.warning("Pick a username so we know what to call you.")
+                    elif len(reg_pass) < 6:
+                        st.warning("Make it at least 6 characters.")
+                    elif reg_pass != reg_pass2:
+                        st.error("Those passwords don't match.")
+                    elif user_exists(_clean_reg):
+                        st.error("That name's taken. Try another.")
+                    else:
+                        uid = create_user(_clean_reg, reg_pass)
+                        st.session_state.username = _clean_reg
+                        st.session_state.user_id = uid
+                        st.session_state.logged_in = True
+                        st.rerun()
+
             return  # nothing else to show when logged out
 
         # ────────────────────────────────────────────────────────
@@ -478,7 +572,7 @@ def render_sidebar():
         # ── Quick Mood Pulse ─────────────────────────────────────
         with st.expander("🌡️ Quick Mood Pulse", expanded=False):
             st.caption(
-                "Rate how you feel right now (0 = not at all, 3 = nearly every day)."
+                "How are you feeling right now? (0 = not at all, 3 = a lot)"
             )
             p_c1, p_c2 = st.columns(2)
             with p_c1:
@@ -523,6 +617,32 @@ def render_sidebar():
                         f'{_celebrations[0]}</div>',
                         unsafe_allow_html=True,
                     )
+            except Exception:
+                pass
+
+        # ── Contextual Nudge ─────────────────────────────────────
+        if ec > 0:
+            try:
+                _nudge_entries = get_entries(uid, limit=10)
+                _today_str = datetime.now().strftime("%Y-%m-%d")
+                _has_today_entry = any(
+                    (e.get("entry_date") or "")[:10] == _today_str
+                    for e in _nudge_entries
+                )
+                _nudge_streak = _streak(_nudge_entries)
+                _last_sent = None
+                if _nudge_entries:
+                    _last_sent = _nudge_entries[0].get("sentiment")
+
+                # Priority: no entry today > streak display > low mood
+                if not _has_today_entry:
+                    st.caption(
+                        "📝 Haven't written today yet - even a sentence counts."
+                    )
+                elif _nudge_streak >= 3:
+                    st.caption(f"\U0001f525 {_nudge_streak}-day streak! Keep it up.")
+                elif _last_sent is not None and _last_sent < -0.3:
+                    st.caption("💙 Checking in - how are things today?")
             except Exception:
                 pass
 
@@ -708,7 +828,6 @@ def render_sidebar():
 
         # ── Logout ───────────────────────────────────────────────
         if st.button("🚪 Logout", use_container_width=True):
-            st.query_params.clear()
             for _k in list(st.session_state.keys()):
                 del st.session_state[_k]
             st.rerun()
@@ -748,7 +867,9 @@ def _entry_mood_icon(sentiment) -> str:
 
 
 def _streak(entries: List[Dict]) -> int:
-    """Calculate the current consecutive-day journaling streak."""
+    """Calculate the current consecutive-day journaling streak.
+    Allows a single 1-day grace period (one missed day keeps the streak).
+    Returns 0 if most recent entry is older than 2 days from today."""
     dates = sorted(set(
         e.get("entry_date", "")[:10]
         for e in entries
@@ -756,18 +877,57 @@ def _streak(entries: List[Dict]) -> int:
     ))
     if not dates:
         return 0
+
+    # Anchor to today: check if most recent entry is within range
+    today = datetime.now().date()
+    try:
+        most_recent = datetime.strptime(dates[-1], "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+
+    days_since_last = (today - most_recent).days
+    # If most recent entry is more than 2 days ago, streak is broken
+    if days_since_last > 2:
+        return 0
+    # If most recent is exactly 2 days ago, only valid with grace
+    if days_since_last == 2:
+        # Grace allows this, but we start counting from here
+        pass
+
     streak = 1
+    grace_used = days_since_last == 2  # Grace already used if last entry is 2 days ago
     for i in range(len(dates) - 1, 0, -1):
         try:
             d1 = datetime.strptime(dates[i], "%Y-%m-%d")
             d2 = datetime.strptime(dates[i - 1], "%Y-%m-%d")
-            if (d1 - d2).days == 1:
+            gap = (d1 - d2).days
+            if gap == 1:
                 streak += 1
+            elif gap == 2 and not grace_used:
+                # Allow one missed day
+                streak += 1
+                grace_used = True
             else:
                 break
         except ValueError:
             break
     return streak
+
+
+def _handle_ai_response(result: str, context_label: str = "AI") -> Tuple[bool, str]:
+    """Check if an AI result is an error and display a friendly message if so.
+    Returns (is_error, result)."""
+    if not result:
+        return (True, "")
+    error_indicators = ["Error:", "AI error", "\u26a0\ufe0f"]
+    is_error = any(indicator in result for indicator in error_indicators)
+    if is_error:
+        st.warning(
+            "Something went wrong reaching the AI. "
+            "This usually means the API key needs checking or there is a "
+            "temporary issue. Give it another try in a moment."
+        )
+    return (is_error, result)
 
 
 def _emotion_tags_html(emotions_raw) -> str:
@@ -826,8 +986,8 @@ def page_onboarding():
 
     st.markdown("# 🌟 Welcome to MindMirror AI")
     st.markdown(
-        "Let's personalise your experience — this takes about "
-        "**2 minutes** and makes everything smarter."
+        "Let's get things set up for you. Takes about "
+        "**2 minutes** and makes everything work better."
     )
     st.progress((step - 1) / 4)
     st.caption(f"Step {step} of 4")
@@ -836,7 +996,7 @@ def page_onboarding():
     # ── Step 1: Core Values ──────────────────────────────────────
     if step == 1:
         st.markdown("### 1️⃣ What matters most to you right now?")
-        st.caption("Pick up to 3 core values. These shape the insights MindMirror offers.")
+        st.caption("Pick up to 3. These shape what MindMirror pays attention to.")
 
         all_values = [
             "Growth", "Connection", "Autonomy", "Security",
@@ -861,12 +1021,62 @@ def page_onboarding():
             else:
                 st.warning("Pick at least one value.")
 
+        # ── Try with sample data ─────────────────────────────────
+        st.markdown("")
+        st.markdown("---")
+        st.caption("Want to see what MindMirror looks like with data?")
+        if st.button("🧪 Try with sample data", key="_onb_sample_data"):
+            _sample_entries = [
+                {
+                    "days_ago": 1,
+                    "content": "Went for a morning walk today and the air felt amazing. I noticed the trees starting to bloom and felt genuinely grateful for the small things.",
+                    "sentiment": 0.7,
+                },
+                {
+                    "days_ago": 2,
+                    "content": "Work was really busy today. Back-to-back meetings and I barely had time to eat lunch. Not bad, just a lot going on.",
+                    "sentiment": 0.05,
+                },
+                {
+                    "days_ago": 3,
+                    "content": "Feeling tired and a bit drained. Slept poorly last night and it affected my whole day. Hard to concentrate on anything.",
+                    "sentiment": -0.4,
+                },
+                {
+                    "days_ago": 4,
+                    "content": "Had a great phone call with an old friend today. We talked for over an hour and I felt so much lighter afterward. Connection matters.",
+                    "sentiment": 0.65,
+                },
+                {
+                    "days_ago": 5,
+                    "content": "Feeling uncertain about where things are headed. Not exactly bad, but there is this nagging sense that I should be doing more or making changes.",
+                    "sentiment": -0.15,
+                },
+            ]
+            _uid = st.session_state.user_id
+            for _se in _sample_entries:
+                _date = (datetime.now() - timedelta(days=_se["days_ago"])).strftime("%Y-%m-%d 12:00")
+                _emos = detect_emotions(_se["content"])
+                _tags = ["sample_data"]
+                save_entry(
+                    user_id=_uid,
+                    content=_se["content"],
+                    entry_date=_date,
+                    sentiment=_se["sentiment"],
+                    emotions=_emos if _emos else None,
+                    tags=_tags,
+                )
+            st.success(
+                "Added 5 sample entries so you can explore. "
+                "You can delete them anytime from your journal."
+            )
+
     # ── Step 2: Support Style & Therapeutic Mode ─────────────────
     elif step == 2:
         st.markdown("### 2️⃣ How should MindMirror talk to you?")
         st.caption(
-            "Everyone processes differently. Choose the style "
-            "that feels right — you can change this anytime."
+            "Everyone's different. Pick what feels right - "
+            "you can always change it later."
         )
 
         style = st.select_slider(
@@ -921,7 +1131,7 @@ def page_onboarding():
         st.caption(
             "MindMirror comes with standard emotions, but you might use "
             "words like *'overwhelmed'*, *'flow'*, or *'meh'*. "
-            "Add your own so the app speaks **your** language."
+            "Add your own so it speaks **your** language."
         ) 
             
             
@@ -985,12 +1195,11 @@ def page_onboarding():
         st.markdown("### 4️⃣ Privacy & data controls")
 
         st.info(
-            "📦 **All your journal entries, chats, and analyses are stored "
-            "locally** in a SQLite database on the server. Nothing is shared "
-            "with third parties.\n\n"
-            "🤖 **AI features** (Analysis, Chat) send your selected text to "
-            "Google Gemini **only when you click the button**. Gemini does not "
-            "retain your data after the request."
+            "📦 **Your journal lives locally** in a database on the server. "
+            "Nothing is shared with anyone.\n\n"
+            "🤖 **AI stuff** (Analysis, Chat) sends your text to Google Gemini "
+            "**only when you click the button**. Gemini doesn't keep your data "
+            "after that."
         )
 
         consent = st.checkbox(
@@ -1223,6 +1432,7 @@ def page_journal():
         full_content = "\n\n".join(
             p for p in content_parts if p and p.strip()
         )
+        full_content = _sanitize_input(full_content)
 
         st.markdown("---")
 
@@ -1301,7 +1511,7 @@ def page_journal():
             key="_j_save",
         ):
             if not full_content.strip():
-                st.warning("Write something first.")
+                st.warning("Nothing here yet - what's on your mind?")
             else:
                 dt_str = datetime.combine(
                     entry_date, entry_time
@@ -1359,6 +1569,23 @@ def page_journal():
                 st.success("✅ Entry saved!")
                 st.balloons()
 
+                # Check for connections to active goals
+                _active_goals = get_goals(uid, status="active")
+                if _active_goals:
+                    _entry_words = set(
+                        w for w in full_content.lower().split()
+                        if len(w) > 3
+                    )
+                    for _g in _active_goals:
+                        _goal_words = set(
+                            w for w in _g.get("title", "").lower().split()
+                            if len(w) > 3
+                        )
+                        if _entry_words & _goal_words:
+                            st.caption(
+                                f"This connects to your goal: {_g['title']}"
+                            )
+
                 # Show celebration if earned
                 updated_entries = get_entries(uid, limit=10)
                 _cele = generate_micro_celebration(updated_entries)
@@ -1410,10 +1637,14 @@ def page_journal():
                 ]
 
                 if not chunks:
-                    st.warning("No entries found. Separate with `---`.")
+                    st.warning("Couldn't find entries. Separate them with `---`.")
                 else:
                     progress = st.progress(0)
                     imported = 0
+                    skipped_short = 0
+                    _pos_count = 0
+                    _neu_count = 0
+                    _neg_count = 0
 
                     for i, chunk in enumerate(chunks):
                         progress.progress((i + 1) / len(chunks))
@@ -1435,6 +1666,14 @@ def page_journal():
                         if not text:
                             continue
 
+                        # Min-length validation
+                        if len(text) < 10:
+                            skipped_short += 1
+                            continue
+
+                        # Sanitize imported content
+                        text = _sanitize_input(text)
+
                         # Auto-analyse
                         sent = sentiment_score(text)
                         emos = detect_emotions(text)
@@ -1453,12 +1692,42 @@ def page_journal():
                         )
                         imported += 1
 
+                        # Track sentiment categories
+                        if sent is not None:
+                            if sent > 0.2:
+                                _pos_count += 1
+                            elif sent < -0.2:
+                                _neg_count += 1
+                            else:
+                                _neu_count += 1
+
                     progress.empty()
                     st.success(
                         f"✅ Imported **{imported}** "
                         f"entr{'ies' if imported != 1 else 'y'} "
                         f"with auto-tagging!"
                     )
+
+                    # Summary breakdown
+                    if imported > 0:
+                        _summary_parts = []
+                        if _pos_count:
+                            _summary_parts.append(f"{_pos_count} positive")
+                        if _neu_count:
+                            _summary_parts.append(f"{_neu_count} neutral")
+                        if _neg_count:
+                            _summary_parts.append(f"{_neg_count} negative")
+                        if _summary_parts:
+                            st.caption(
+                                "Sentiment breakdown: " + ", ".join(_summary_parts)
+                            )
+
+                    if skipped_short > 0:
+                        st.caption(
+                            f"Skipped {skipped_short} "
+                            f"entr{'ies' if skipped_short != 1 else 'y'} "
+                            f"that were too short (min 10 characters)."
+                        )
 
                     if imported >= 3:
                         st.info(
@@ -1473,7 +1742,7 @@ def page_journal():
         all_entries = get_entries(uid, limit=200)
 
         if not all_entries:
-            st.info("No entries yet. Start journaling! ✍️")
+            st.info("No entries yet. What's on your mind? ✍️")
             return
 
         # ── Filters ──────────────────────────────────────────────
@@ -1651,8 +1920,8 @@ def page_journal():
 def page_analysis():
     st.markdown("# 🔬 Pattern Analysis")
     st.markdown(
-        "Uncover cognitive distortions, growth trajectories, emotional "
-        "networks, mood triggers, and more — all from your journal."
+        "Let's look at what your writing reveals - thinking habits, "
+        "mood patterns, triggers, and how you've been growing."
     )
     st.markdown("---")
 
@@ -1661,8 +1930,8 @@ def page_analysis():
 
     if len(all_entries) < 2:
         st.warning(
-            "Write at least **2 journal entries** before running "
-            "an analysis. The more data, the richer the insights."
+            "Need at least **2 journal entries** to find patterns. "
+            "The more you write, the more there is to see."
         )
         return
 
@@ -2121,6 +2390,14 @@ def page_analysis():
         if not show_consent_notice(CONSENT_NOTICE_ANALYSIS):
             return
 
+        # Rate limit check
+        if not _check_rate_limit():
+            st.warning(
+                "Take a breather - you have hit the limit for AI requests. "
+                "Try again in a few minutes."
+            )
+            return
+
         with st.spinner("🧠 MindMirror is reading between the lines…"):
             profile = get_psyche_profile(uid)
             result = ai_analysis(
@@ -2131,11 +2408,13 @@ def page_analysis():
                 psyche_profile=profile,
             )
 
-        st.markdown("### 🤖 AI Deep Analysis Report")
-        st.markdown(result)
-        st.session_state.current_analysis = result
-        save_analysis(uid, "ai", result)
-        st.success("✅ Analysis saved to your history.")
+        _ai_err, result = _handle_ai_response(result, "Analysis")
+        if not _ai_err:
+            st.markdown("### 🤖 AI Deep Analysis Report")
+            st.markdown(result)
+            st.session_state.current_analysis = result
+            save_analysis(uid, "ai", result)
+            st.success("✅ Analysis saved to your history.")
 
         # ── Post-analysis AI actions ─────────────────────────────
         st.markdown("")
@@ -2147,16 +2426,22 @@ def page_analysis():
                 use_container_width=True,
                 key="_an_prompts",
             ):
-                with st.spinner("Crafting prompts…"):
-                    prompts = ai_reflection_prompts(
-                        all_entries,
-                        st.session_state.api_key,
-                        st.session_state.model,
-                        goals=get_goals(uid),
-                        psyche_profile=get_psyche_profile(uid),
+                if not _check_rate_limit():
+                    st.warning(
+                        "Take a breather - you have hit the limit for AI requests. "
+                        "Try again in a few minutes."
                     )
-                st.markdown("### 💡 Personalised Reflection Prompts")
-                st.markdown(prompts)
+                else:
+                    with st.spinner("Crafting prompts…"):
+                        prompts = ai_reflection_prompts(
+                            all_entries,
+                            st.session_state.api_key,
+                            st.session_state.model,
+                            goals=get_goals(uid),
+                            psyche_profile=get_psyche_profile(uid),
+                        )
+                    st.markdown("### 💡 Personalised Reflection Prompts")
+                    st.markdown(prompts)
 
         with pa2:
             if st.button(
@@ -2164,15 +2449,21 @@ def page_analysis():
                 use_container_width=True,
                 key="_an_forecast",
             ):
-                with st.spinner("Forecasting…"):
-                    forecast = ai_mood_forecast(
-                        all_entries,
-                        la,
-                        st.session_state.api_key,
-                        st.session_state.model,
+                if not _check_rate_limit():
+                    st.warning(
+                        "Take a breather - you have hit the limit for AI requests. "
+                        "Try again in a few minutes."
                     )
-                st.markdown("### 🔮 Emotional Weather Forecast")
-                st.markdown(forecast)
+                else:
+                    with st.spinner("Forecasting…"):
+                        forecast = ai_mood_forecast(
+                            all_entries,
+                            la,
+                            st.session_state.api_key,
+                            st.session_state.model,
+                        )
+                    st.markdown("### 🔮 Emotional Weather Forecast")
+                    st.markdown(forecast)
 
         with pa3:
             if distortions:
@@ -2181,15 +2472,21 @@ def page_analysis():
                     use_container_width=True,
                     key="_an_distdive",
                 ):
-                    with st.spinner("Analysing thinking patterns…"):
-                        dist_result = ai_distortion_analysis(
-                            target,
-                            distortions,
-                            st.session_state.api_key,
-                            st.session_state.model,
+                    if not _check_rate_limit():
+                        st.warning(
+                            "Take a breather - you have hit the limit for AI requests. "
+                            "Try again in a few minutes."
                         )
-                    st.markdown("### 🌀 Cognitive Distortion Analysis")
-                    st.markdown(dist_result)
+                    else:
+                        with st.spinner("Analysing thinking patterns…"):
+                            dist_result = ai_distortion_analysis(
+                                target,
+                                distortions,
+                                st.session_state.api_key,
+                                st.session_state.model,
+                            )
+                        st.markdown("### 🌀 Cognitive Distortion Analysis")
+                        st.markdown(dist_result)
             else:
                 st.button(
                     "🌀 No distortions found",
@@ -2207,10 +2504,9 @@ def page_analysis():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_chat():
-    st.markdown("# 💬 AI Insight Chat")
+    st.markdown("# 💬 Talk It Out")
     st.markdown(
-        "Talk with MindMirror about your patterns, feelings, "
-        "and what's on your mind. Choose your therapeutic mode "
+        "Chat about what's on your mind. Pick a mode "
         "and adjust the empathy level in the sidebar."
     )
     st.markdown("---")
@@ -2220,19 +2516,19 @@ def page_chat():
     # ── Gate checks ──────────────────────────────────────────────
     if not st.session_state.api_key:
         st.warning(
-            "⚠️ Gemini API key not found. Add `GEMINI_API_KEY` "
-            "to your Streamlit Secrets (see ⚙️ Settings)."
+            "⚠️ No Gemini API key yet. Add `GEMINI_API_KEY` "
+            "in ⚙️ Settings to use chat."
         )
         return
 
     if st.session_state.privacy_mode == "local_only":
-        st.warning("🔒 AI Chat is disabled in **Local-only** mode.")
-        st.caption("Change this in ⚙️ Settings → Privacy.")
+        st.warning("🔒 Chat is off in **Local-only** mode.")
+        st.caption("You can change this in ⚙️ Settings.")
         return
 
     if not st.session_state.consent_ai_processing:
         st.warning(
-            "🔒 AI consent is revoked. Enable it in "
+            "🔒 AI consent is off. Turn it on in "
             "⚙️ Settings to use Chat."
         )
         return
@@ -2390,29 +2686,41 @@ def page_chat():
 
     # ── Session summary ──────────────────────────────────────────
     if want_summary and db_msgs:
-        with st.spinner("Generating session summary…"):
-            summary = generate_session_summary(
-                db_msgs,
-                st.session_state.api_key,
-                st.session_state.model,
+        if not _check_rate_limit():
+            st.warning(
+                "Take a breather - you have hit the limit for AI requests. "
+                "Try again in a few minutes."
             )
-        st.markdown("---")
-        st.markdown("### 📋 Session Summary")
-        st.markdown(summary)
+        else:
+            with st.spinner("Generating session summary…"):
+                summary = generate_session_summary(
+                    db_msgs,
+                    st.session_state.api_key,
+                    st.session_state.model,
+                )
+            st.markdown("---")
+            st.markdown("### 📋 Session Summary")
+            st.markdown(summary)
 
-        # Save summary as a message in the session
-        save_chat_msg(
-            uid,
-            "assistant",
-            f"**📋 Session Summary**\n\n{summary}",
-            st.session_state.chat_session,
-        )
-        st.rerun()
+            # Save summary as a message in the session
+            save_chat_msg(
+                uid,
+                "assistant",
+                f"**📋 Session Summary**\n\n{summary}",
+                st.session_state.chat_session,
+            )
+            st.rerun()
     elif want_summary and not db_msgs:
         st.info("No messages to summarise yet.")
 
     # ── Chat input ───────────────────────────────────────────────
-    if prompt := st.chat_input("Tell me what's on your mind…"):
+    # Check for retry of a failed message
+    _retry_prompt = st.session_state.pop("_chat_retry_msg", None)
+
+    if _retry_prompt or (prompt := st.chat_input("Tell me what's on your mind…")):
+        if _retry_prompt:
+            prompt = _retry_prompt
+        prompt = _sanitize_input(prompt)
 
         # ── Crisis detection ─────────────────────────────────────
         is_crisis = detect_crisis(prompt)
@@ -2440,26 +2748,74 @@ def page_chat():
 
         # Call AI
         with st.chat_message("assistant"):
-            with st.spinner("Reflecting…"):
-                reply = ai_chat(
-                    prompt,
-                    entries if entries else [],
-                    history,
-                    st.session_state.api_key,
-                    st.session_state.model,
-                    chat_mode=active_mode,
-                    empathy_level=(
-                        0.9 if is_crisis  # max empathy in crisis
-                        else active_empathy
-                    ),
-                    psyche_profile=get_psyche_profile(uid),
+            if not _check_rate_limit():
+                st.warning(
+                    "Take a breather - you have hit the limit for AI requests. "
+                    "Try again in a few minutes."
                 )
-            st.markdown(reply)
+            else:
+                # Fetch active goals and recent analysis for context
+                active_goals = get_goals(uid, status="active")
+                recent_analysis = get_latest_analysis(uid, "ai")
+                analysis_summary = recent_analysis[:500] if recent_analysis else None
 
-        save_chat_msg(
-            uid, "assistant", reply,
-            st.session_state.chat_session,
+                with st.spinner("Reflecting…"):
+                    reply = ai_chat(
+                        prompt,
+                        entries if entries else [],
+                        history,
+                        st.session_state.api_key,
+                        st.session_state.model,
+                        chat_mode=active_mode,
+                        empathy_level=(
+                            0.9 if is_crisis  # max empathy in crisis
+                            else active_empathy
+                        ),
+                        psyche_profile=get_psyche_profile(uid),
+                        goals=active_goals,
+                        recent_analysis_summary=analysis_summary,
+                    )
+
+                _chat_err, reply = _handle_ai_response(reply, "Chat")
+                if _chat_err:
+                    st.session_state["_chat_retry_msg"] = prompt
+                    if st.button("🔄 Retry", key="_chat_retry"):
+                        st.rerun()
+                else:
+                    st.markdown(reply)
+
+                    save_chat_msg(
+                        uid, "assistant", reply,
+                        st.session_state.chat_session,
+                    )
+
+                # Check if reply contains action-like language
+                _action_phrases = ["try ", "consider ", "experiment ", "practice ", "start ", "commit to"]
+                if reply and any(phrase in reply.lower() for phrase in _action_phrases):
+                    # Extract first sentence with action language
+                    _sentences = [s.strip() for s in reply.replace("\n", " ").split(".") if s.strip()]
+                    _goal_sentence = ""
+                    for _s in _sentences:
+                        if any(phrase in _s.lower() for phrase in _action_phrases):
+                            _goal_sentence = _s.strip()
+                            break
+                    if _goal_sentence:
+                        if st.button("🎯 Turn this into a goal?", key="_chat_to_goal"):
+                            st.session_state["_prefill_goal"] = _goal_sentence[:200]
+                            st.rerun()
+
+    # ── Goal prefill from chat suggestion ────────────────────────
+    if st.session_state.get("_prefill_goal"):
+        st.markdown("---")
+        st.markdown("#### 🎯 Create a Goal")
+        _prefill = st.session_state.pop("_prefill_goal")
+        goal_text = st.text_input(
+            "Goal title:", value=_prefill, key="_chat_goal_input"
         )
+        if st.button("Save Goal", key="_chat_goal_save"):
+            if goal_text.strip():
+                save_goal(uid, goal_text.strip())
+                st.success(f"Goal saved: {goal_text.strip()}")
 
     # ── Context panel ────────────────────────────────────────────
     with st.expander("📊 Your Recent Context (visible to AI)", expanded=False):
@@ -2566,6 +2922,50 @@ def page_dashboard():
     entries = get_entries(uid, limit=200)
 
     # ─────────────────────────────────────────────────────────────
+    #  0. DAILY CHECK-IN (lightweight, once per day)
+    # ─────────────────────────────────────────────────────────────
+    _checkin_emojis = {
+        "Great": "\U0001f929",
+        "Good": "\U0001f60a",
+        "Okay": "\U0001f642",
+        "Meh": "\U0001f611",
+        "Rough": "\U0001f614",
+    }
+
+    if has_checked_in_today(uid):
+        today_ci = get_today_checkin(uid)
+        if today_ci:
+            scores = today_ci.get("scores", [])
+            mood_label = scores[0] if scores else "Okay"
+            emoji = _checkin_emojis.get(mood_label, "\U0001f642")
+            st.caption(f"{emoji} You checked in today - feeling **{mood_label}**")
+    else:
+        st.markdown("**How are you feeling right now?**")
+        ci_cols = st.columns(5)
+        for idx, (label, emoji) in enumerate(_checkin_emojis.items()):
+            with ci_cols[idx]:
+                if st.button(
+                    f"{emoji}\n{label}",
+                    key=f"_daily_ci_{label}",
+                    use_container_width=True,
+                ):
+                    save_mood_checkin(uid, "daily_checkin", [label], 0)
+                    st.rerun()
+
+        ci_note = st.text_input(
+            "Optional one-line note:",
+            key="_daily_ci_note",
+            placeholder="Anything on your mind?",
+            label_visibility="collapsed",
+        )
+        if ci_note and ci_note.strip():
+            if st.button("Save note", key="_daily_ci_note_save"):
+                save_mood_checkin(uid, "daily_checkin", [ci_note.strip()], 0)
+                st.rerun()
+
+    st.markdown("---")
+
+    # ─────────────────────────────────────────────────────────────
     #  1. WELCOME BANNER
     # ─────────────────────────────────────────────────────────────
     profile = st.session_state.get("psyche_profile", {})
@@ -2582,14 +2982,31 @@ def page_dashboard():
 
     if not entries:
         st.info(
-            "Your dashboard will come alive once you start journaling. "
-            "Head to **📝 Journal** and write your first entry! ✨"
+            "Nothing here yet. Once you start writing, "
+            "this is where your patterns show up. "
+            "Head to **📝 Journal** to begin."
         )
         return
 
     # Celebrations
     goals = get_goals(uid)
     show_celebrations(entries, goals)
+
+    # ── Recent Insights Card ─────────────────────────────────────
+    latest_analysis = get_latest_analysis(uid, "ai")
+    if latest_analysis:
+        # Extract first 2-3 lines/bullet points
+        _lines = [ln.strip() for ln in latest_analysis.split("\n") if ln.strip()]
+        _preview_lines = _lines[:3]
+        _preview_text = "\n".join(_preview_lines)
+        st.markdown(
+            f'<div class="mm-card">'
+            f'<h4>💡 Recent Insights</h4>'
+            f'<p>{_preview_text[:300]}</p>'
+            f'<p><em>See full analysis on the Analysis page.</em></p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
 
@@ -3355,18 +3772,20 @@ def page_dashboard():
                         period=narr_period,
                     )
 
-                st.markdown(
-                    f'<div class="mm-card">'
-                    f'<h4>📖 Your {narr_period.title()} in Review</h4>'
-                    f'{narrative}</div>',
-                    unsafe_allow_html=True,
-                )
+                _narr_err, narrative = _handle_ai_response(narrative, "Narrative")
+                if not _narr_err:
+                    st.markdown(
+                        f'<div class="mm-card">'
+                        f'<h4>📖 Your {narr_period.title()} in Review</h4>'
+                        f'{narrative}</div>',
+                        unsafe_allow_html=True,
+                    )
 
-                save_analysis(
-                    uid,
-                    f"narrative_{narr_period}",
-                    narrative,
-                )
+                    save_analysis(
+                        uid,
+                        f"narrative_{narr_period}",
+                        narrative,
+                    )
 
     # ── Saved narrative display ──────────────────────────────────
     recent_analyses = get_analyses(uid, limit=5)
@@ -3416,10 +3835,10 @@ def page_dashboard():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_skills():
-    st.markdown("# 🧘 Skills & Growth")
+    st.markdown("# 🧘 Tools That Actually Help")
     st.markdown(
-        "Evidence-based exercises, guided reflection journeys, "
-        "and quick grounding tools — all in one place."
+        "Exercises, guided reflections, and quick grounding tools - "
+        "all in one place."
     )
     st.markdown("---")
 
@@ -3436,11 +3855,41 @@ def page_skills():
     # ═════════════════════════════════════════════════════════════
     with tab_modules:
         st.markdown(
-            "Browse evidence-based skills from CBT, DBT, ACT, "
-            "and self-compassion traditions. Each includes an "
-            "interactive exercise you can try right now."
+            "Skills from CBT, DBT, ACT, and self-compassion. "
+            "Each one has something you can try right now."
         )
         st.markdown("")
+
+        # ── Recommended for you ──────────────────────────────────
+        _recent_text_entries = get_entries(uid, limit=5)
+        _recommended_cats = set()
+        for _re in _recent_text_entries:
+            _emos = detect_emotions(_re.get("content", ""))
+            if _emos:
+                if "fear" in _emos or "exhaustion" in _emos:
+                    _recommended_cats.add("distress_tolerance")
+                    _recommended_cats.add("mindfulness")
+                if "shame" in _emos:
+                    _recommended_cats.add("self_compassion")
+                if "confusion" in _emos or "anger" in _emos:
+                    _recommended_cats.add("cognitive_skills")
+
+        if _recommended_cats:
+            st.markdown("#### ✨ Recommended for you")
+            st.caption("Based on your recent entries:")
+            _rec_cols = st.columns(len(_recommended_cats))
+            for _ri, _rcat in enumerate(sorted(_recommended_cats)):
+                _rcat_title = SKILL_MODULES[_rcat]["title"] if _rcat in SKILL_MODULES else _rcat
+                with _rec_cols[_ri]:
+                    if st.button(
+                        f"⭐ {_rcat_title}",
+                        key=f"_skill_rec_{_rcat}",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        st.session_state._skill_category = _rcat
+                        st.rerun()
+            st.markdown("---")
 
         # Category selector
         cat_keys = list(SKILL_MODULES.keys())
@@ -3950,10 +4399,9 @@ def page_skills():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_history():
-    st.markdown("# 📂 History & Export")
+    st.markdown("# 📂 Your Stuff")
     st.markdown(
-        "Browse your saved analyses, review chat sessions, "
-        "and export your data."
+        "Saved analyses, chat sessions, and data export."
     )
     st.markdown("---")
 
@@ -3965,14 +4413,6 @@ def page_history():
         "📥 Export Data",
         "📥 Restore Backup",
     ])
-        
-        # ═════════════════════════════════════════════════════════════
-    #  TAB 4: RESTORE FROM BACKUP
-    # ═════════════════════════════════════════════════════════════
-    with tab_restore:
-        show_restore_widget(uid)    
-        
-    
 
     # ═════════════════════════════════════════════════════════════
     #  TAB 1: SAVED ANALYSES
@@ -4064,8 +4504,8 @@ def page_history():
 
         if not sessions:
             st.info(
-                "No chat sessions yet. Start a conversation "
-                "from the **💬 AI Chat** page."
+                "No conversations yet. Start one from "
+                "the **💬 Chat** page."
             )
         else:
             st.caption(f"{len(sessions)} chat session(s) found")
@@ -4123,7 +4563,7 @@ def page_history():
     # ═════════════════════════════════════════════════════════════
     with tab_export:
         st.markdown(
-            "Download your MindMirror data. **Your data belongs to you.**"
+            "Download your MindMirror data. **It's yours.**"
         )
         st.markdown("")
 
@@ -4146,8 +4586,8 @@ def page_history():
         # ── JSON Export ──────────────────────────────────────────
         st.markdown("#### 📦 Full Export (JSON)")
         st.caption(
-            "Complete export of all your data: journal entries, "
-            "analyses, chat messages, goals, check-ins, and profile."
+            "Everything: journal entries, analyses, chats, "
+            "goals, check-ins, and profile."
         )
 
         if st.button(
@@ -4246,8 +4686,7 @@ def page_history():
         # ── CSV Export (entries only) ────────────────────────────
         st.markdown("#### 📄 Journal Entries (CSV)")
         st.caption(
-            "Tabular export of journal entries for use in "
-            "spreadsheets or data analysis tools."
+            "Your journal entries in spreadsheet format."
         )
 
         if entries:
@@ -4282,7 +4721,7 @@ def page_history():
                 key="_download_csv",
             )
         else:
-            st.caption("No entries to export.")
+            st.caption("Nothing to export yet.")
 
         st.markdown("---")
 
@@ -4330,6 +4769,12 @@ def page_history():
                         f"Source: {cl.get('trigger_snippet', '?')[:60]}"
                     )
 
+    # ═════════════════════════════════════════════════════════════
+    #  TAB 4: RESTORE FROM BACKUP
+    # ═════════════════════════════════════════════════════════════
+    with tab_restore:
+        show_restore_widget(uid)
+
 
 # ──────────────────────────────────────────────────────────────────
 # END OF CHUNK 9 — paste Chunk 10 directly below this line
@@ -4342,7 +4787,6 @@ def page_history():
 # ║  🚦 Main Router                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-import sqlite3   # for delete_all_user_data helper
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -4385,8 +4829,7 @@ def _delete_all_user_data(user_id: int):
 def page_settings():
     st.markdown("# ⚙️ Settings")
     st.markdown(
-        "Configure your AI, privacy preferences, profile, "
-        "appearance, and data."
+        "AI setup, privacy, profile, appearance, and your data."
     )
     st.markdown("---")
 
@@ -4406,8 +4849,8 @@ def page_settings():
     with tab_ai:
         st.markdown("### 🔑 Gemini API Key")
         st.caption(
-            "Your API key is stored **only in your browser session** "
-            "and is never saved to the database. For persistent storage, "
+            "Your API key lives **only in your browser session** "
+            "and never touches the database. For persistent storage, "
             "add it to `.streamlit/secrets.toml`."
         )
 
@@ -4418,12 +4861,10 @@ def page_settings():
         )
 
         current_key = st.session_state.api_key
-        masked = (
-            f"{current_key[:8]}…{current_key[-4:]}"
-            if current_key and len(current_key) > 12
-            else ("(set)" if current_key else "(not set)")
-        )
-        st.caption(f"Current key: `{masked}`")
+        if current_key:
+            st.caption("Current key: `Key is set`")
+        else:
+            st.caption("Current key: `No key configured`")
 
         new_key = st.text_input(
             "Enter or update API key:",

@@ -1642,15 +1642,13 @@ def _call_gemini(prompt, api_key, model="gemini-2.5-flash",
 # ══════════════════════════════════════════════════════════════════
 
 CONSENT_NOTICE_ANALYSIS = (
-    "📋 **Privacy notice:** This analysis will send your selected "
-    "journal entries to Google Gemini for processing. No data is "
-    "stored by Gemini after the request completes."
+    "📋 **Heads up:** This sends your writing to Google Gemini "
+    "for the AI to read. Nothing gets stored after."
 )
 
 CONSENT_NOTICE_CHAT = (
-    "📋 **Privacy notice:** Your message and recent journal context "
-    "are sent to Google Gemini. No data is retained by Gemini "
-    "after this conversation."
+    "📋 **Heads up:** Your message and recent journal context "
+    "go to Google Gemini. Nothing is kept after the conversation."
 )
 
 
@@ -1659,7 +1657,7 @@ CONSENT_NOTICE_CHAT = (
 # ══════════════════════════════════════════════════════════════════
 
 def ai_analysis(entries, api_key, model="gemini-2.5-flash",
-                local_data=None, psyche_profile=None):
+                local_data=None, psyche_profile=None, goals=None):
     """Run comprehensive AI analysis using Gemini."""
 
     # Build entry summaries
@@ -1733,57 +1731,70 @@ def ai_analysis(entries, api_key, model="gemini-2.5-flash",
     if psyche_profile:
         profile_context = f"\n\nUser psyche profile: {json.dumps(psyche_profile)}"
 
-    prompt = f"""You are MindMirror AI, an expert behavioral and emotional pattern analyst.
-You combine the insight of a clinical psychologist with the warmth of a trusted friend.
+    # Goals context
+    goals_context = ""
+    if goals:
+        active_goals = [g for g in goals if g.get("status") == "active"]
+        if active_goals:
+            goals_list = ", ".join(g.get("title", "") for g in active_goals[:5])
+            goals_context = f"\n\nUSER'S ACTIVE GOALS: {goals_list}"
 
-Analyze these journal entries and the local pattern data to produce a comprehensive,
-compassionate, and actionable report.
+    prompt = f"""You are someone who has read all of this person's journal entries carefully 
+and notices patterns. You combine real insight with genuine warmth - like a friend 
+who reads a lot of psychology and pays close attention.
+
+Write like you're explaining what you've noticed to them over coffee. Be honest 
+but kind. Use simple language.
 
 {profile_context}
+{goals_context}
 
 JOURNAL ENTRIES:
 {entry_block}
 {local_summary}
 
-YOUR REPORT MUST INCLUDE:
+YOUR REPORT SHOULD COVER:
 
-1. **Emotional Landscape** — Dominant emotions, emotional diversity, and granularity.
-   Note any emotions that seem suppressed or absent.
+1. **How you have been feeling** - What emotions keep showing up? What's missing 
+   or being held back? How wide is the emotional range?
 
-2. **Cognitive Patterns** — Identify thinking patterns including any cognitive distortions
-   (catastrophizing, all-or-nothing thinking, mind reading, etc.). Provide gentle reframes.
+2. **Your thinking habits** - Any thinking traps you fall into (like jumping to 
+   the worst case, black-and-white thinking, mind reading)? Offer gentler ways 
+   to look at things.
 
-3. **Behavioral Cycles** — Recurring patterns, triggers, and habits. When do they feel best/worst?
-   Include day-of-week and topic correlations.
+3. **Patterns and routines** - What keeps repeating? When do things feel better 
+   or worse? Include day-of-week stuff and topic connections.
 
-4. **Growth Assessment** — Comment on emotional regulation, resilience, and self-awareness
-   trajectories. Celebrate progress, no matter how small.
+4. **How you are growing** - Comment on emotional steadiness, bouncing back, and 
+   self-awareness over time. Notice progress, even small stuff.
 
-5. **Mood Forecast** — Based on trends, what might the user expect ahead? What proactive
-   steps could help?
+5. **What might be coming** - Based on the trends, what could the next stretch 
+   look like? What might help?
 
-6. **Relationship & Social Dynamics** — How do relationships and social themes appear?
+6. **Your people** - How do relationships and social stuff show up in the entries?
 
-7. **Strengths & Resources** — What coping strategies, strengths, and supports are already
-   working? Amplify them.
+7. **What is already working** - What coping strategies, strengths, and supports 
+   are already helping? Lean into those.
 
-8. **Personalized Recommendations** — 3-5 specific, actionable suggestions tied to their
-   unique patterns. Include at least one grounding exercise or micro-practice.
+8. **Things to try** - 3-5 specific, doable suggestions tied to their actual 
+   patterns. Include at least one grounding practice or small daily thing.
 
-9. **Narrative Summary** — A brief, compassionate "story" of their emotional journey so far,
-   written in second person ("You've been..."). End with encouragement.
+9. **The bigger picture** - A short "story" of where they've been emotionally, 
+   written directly to them ("You've been..."). End with something real and 
+   encouraging.
 
-STYLE GUIDELINES:
-- Be warm, perceptive, and never judgmental
-- Use metaphors and vivid language where helpful
-- Balance honesty with compassion
-- Reference specific entries when making observations
+HOW TO WRITE THIS:
+- Be warm and never judgmental
+- Use simple words, not jargon
+- Be honest but compassionate
+- Reference specific entries when you notice something
 - Use emoji sparingly for warmth (not overload)
-- If you notice any crisis indicators, include supportive resources gently
+- If you notice anything that sounds like a crisis, gently include support resources
 - Frame everything as patterns to explore, not diagnoses
-- Acknowledge this is based on limited data and not a clinical assessment
+- Acknowledge this is based on limited entries and is not a clinical assessment
+- If the user has active goals listed above, note any connections between journal patterns and those stated goals
 
-Write a thorough, insightful report."""
+Write a thoughtful, insightful report."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.6, max_tokens=6000)
 
@@ -1796,63 +1807,64 @@ CHAT_MODE_PROMPTS = {
     "open": {
         "label": "💬 Open Conversation",
         "system": (
-            "You are MindMirror AI, a warm and perceptive emotional companion. "
-            "Respond naturally and conversationally. Listen deeply, reflect back "
-            "what you hear, ask thoughtful follow-up questions, and offer gentle "
-            "observations. Balance warmth with honesty. You are not a therapist "
-            "but a caring, insightful friend who remembers patterns."
+            "You are MindMirror AI - think of yourself as a perceptive friend "
+            "who's catching up with someone they care about. Listen, reflect back "
+            "what you hear, ask good follow-up questions, and share observations "
+            "when they might help. You're not a therapist. You're someone who "
+            "pays attention and genuinely cares. Use contractions, keep it natural."
         ),
     },
     "cbt": {
         "label": "🧠 CBT Coaching",
         "system": (
-            "You are MindMirror AI in CBT coaching mode. Use cognitive behavioral "
-            "therapy techniques: help the user identify automatic thoughts, examine "
-            "evidence for and against beliefs, spot cognitive distortions, and "
-            "develop balanced alternative thoughts. Always label techniques clearly "
-            "(e.g., 'Let's try a thought record...' or 'That sounds like it might "
-            "be catastrophizing — let's examine it'). Be structured but warm. "
-            "You are not a licensed therapist — frame guidance as exercises to explore."
+            "You are MindMirror AI in thinking-patterns mode. Help them look at "
+            "their thoughts from different angles - spot the thinking traps "
+            "(catastrophizing, all-or-nothing, mind reading), question whether "
+            "the evidence really supports the belief, and find more balanced ways "
+            "to see things. Be clear about what you're doing (e.g., 'Let's look "
+            "at the evidence here...' or 'That sounds like it might be worst-case "
+            "thinking - let's check'). Structured but warm. You're not a licensed "
+            "therapist - frame this as exploring together."
         ),
     },
     "validation": {
         "label": "💚 Validation Mode",
         "system": (
-            "You are MindMirror AI in validation mode. Your primary goal is to "
-            "make the user feel deeply heard and understood. Reflect their emotions "
-            "back accurately and with nuance. Validate their experience without "
-            "trying to fix or solve anything unless explicitly asked. Use phrases "
-            "like 'That makes complete sense,' 'Of course you feel that way,' and "
-            "'Your feelings are valid.' Be warm, gentle, and present. Only offer "
-            "suggestions if the user asks for them."
+            "You are MindMirror AI in validation mode. Your job is to make them "
+            "feel genuinely heard. Reflect their emotions back with nuance. Let "
+            "them know what they feel makes sense - you're not trying to fix "
+            "anything unless they ask. Say things like 'Of course you feel that "
+            "way,' and 'That makes complete sense.' Be warm, present, and real. "
+            "Only offer suggestions if they ask for them."
         ),
     },
     "reflection": {
         "label": "🪞 Reflective Listening",
         "system": (
-            "You are MindMirror AI in reflective listening mode. Mirror the user's "
-            "words and feelings back to them with precision. Ask Socratic questions "
-            "to help them discover their own insights. Avoid giving direct advice. "
-            "Instead, guide them to explore: 'What do you think is really going on?' "
-            "'What would change if that were true?' 'What does that feeling tell you "
-            "about what you need?' Be patient and trust the user's wisdom."
+            "You are MindMirror AI in reflective mode. Mirror their words and "
+            "feelings back clearly. Ask good questions that help them figure "
+            "things out on their own. Skip the direct advice. Instead, help them "
+            "explore: 'What do you think is really going on here?' 'What would "
+            "change if that were true?' 'What does that feeling tell you about "
+            "what you need?' Be patient. Trust that they have the answers."
         ),
     },
     "homework": {
-        "label": "📋 Homework Review",
+        "label": "📋 Check-in",
         "system": (
-            "You are MindMirror AI in homework review mode. Help the user review "
-            "their progress on goals, exercises, and action items from previous "
-            "sessions. Celebrate wins, explore obstacles compassionately, and help "
-            "set gentle next steps. Reference their journal entries and patterns "
-            "when relevant. Be encouraging and specific."
+            "You are MindMirror AI in check-in mode. Help them look at how "
+            "things are going with their goals and the stuff they've been "
+            "working on. Notice what's going well, talk through what's been "
+            "hard, and help figure out next steps. Reference their journal "
+            "entries and patterns when relevant. Be encouraging and specific."
         ),
     },
 }
 
 
 def _build_chat_context(entries, history, chat_mode="open",
-                        empathy_level=0.5, psyche_profile=None):
+                        empathy_level=0.5, psyche_profile=None,
+                        goals=None, recent_analysis_summary=None):
     """Build a rich context block for the chat system prompt."""
     context_parts = []
 
@@ -1863,24 +1875,24 @@ def _build_chat_context(entries, history, chat_mode="open",
     # Empathy calibration
     if empathy_level <= 0.25:
         context_parts.append(
-            "TONE: Be direct and challenging. Push the user to think critically. "
-            "Don't shy away from hard truths, but remain respectful."
+            "TONE: Be straight with them. Push them to think critically. "
+            "Don't dodge hard truths, but stay respectful."
         )
     elif empathy_level <= 0.5:
         context_parts.append(
-            "TONE: Balance empathy with gentle challenge. Validate feelings "
-            "but also encourage growth and perspective shifts."
+            "TONE: Balance kindness with gentle challenge. Let them know "
+            "their feelings make sense, but also nudge toward growth."
         )
     elif empathy_level <= 0.75:
         context_parts.append(
-            "TONE: Be warm, empathetic, and supportive. Prioritize emotional "
-            "validation while gently weaving in observations."
+            "TONE: Be warm and supportive. Prioritize letting them know "
+            "you get it, while gently weaving in what you notice."
         )
     else:
         context_parts.append(
-            "TONE: Be extremely warm, gentle, and nurturing. The user may be "
-            "going through a hard time. Maximum compassion and softness. "
-            "Short, grounding responses during distress."
+            "TONE: Be really gentle right now. They might be having a "
+            "hard time. Maximum warmth and softness. Keep responses "
+            "short and steady - something to ground them."
         )
 
     # Psyche profile
@@ -1929,21 +1941,40 @@ def _build_chat_context(entries, history, chat_mode="open",
                     recent_dists.append(d["label"])
         if recent_dists:
             context_parts.append(
-                f"COGNITIVE PATTERNS DETECTED: {', '.join(set(recent_dists))}. "
-                "Gently address these if they come up naturally in conversation."
+                f"THINKING PATTERNS NOTICED: {', '.join(set(recent_dists))}. "
+                "If these come up naturally, gently point them out."
             )
+
+    # Active goals context
+    if goals:
+        active_goals = [g for g in goals if g.get("status") == "active"]
+        if active_goals:
+            goals_lines = []
+            for g in active_goals[:5]:
+                title = g.get("title", "")
+                progress = g.get("progress", 0)
+                goals_lines.append(f"  - {title} (progress: {progress:.0f}%)")
+            context_parts.append(
+                "ACTIVE GOALS:\n" + "\n".join(goals_lines)
+            )
+
+    # Recent analysis insights
+    if recent_analysis_summary:
+        context_parts.append(
+            f"RECENT INSIGHTS: {recent_analysis_summary}"
+        )
 
     # Response length guidance
     context_parts.append(
         "RESPONSE GUIDELINES:\n"
-        "- During emotional distress: Keep responses short (2-4 sentences), "
-        "grounding, and validating.\n"
-        "- During exploration: Offer richer reflections (1-2 paragraphs) with "
+        "- When they're having a hard time: Keep it short (2-4 sentences), "
+        "steady, and let them know you hear them.\n"
+        "- When they're exploring: Offer richer reflections (1-2 paragraphs) with "
         "follow-up questions.\n"
-        "- When the user asks for advice: Provide thoughtful, specific suggestions.\n"
-        "- Always end with either a reflection or a gentle question — never both.\n"
-        "- Never diagnose. Frame observations as patterns to explore.\n"
-        "- If you detect crisis language, respond with grounded support and include "
+        "- When they ask for advice: Give thoughtful, specific suggestions.\n"
+        "- Always end with either a reflection or a gentle question - not both.\n"
+        "- Never diagnose. Frame what you notice as patterns to explore.\n"
+        "- If you pick up on crisis language, respond with grounded support and include "
         "crisis resources (988 Lifeline, Crisis Text Line)."
     )
 
@@ -1952,33 +1983,35 @@ def _build_chat_context(entries, history, chat_mode="open",
 
 def ai_chat(message, entries, history, api_key,
             model="gemini-2.5-flash", chat_mode="open",
-            empathy_level=0.5, psyche_profile=None):
+            empathy_level=0.5, psyche_profile=None, goals=None,
+            recent_analysis_summary=None):
     """Send a chat message to Gemini with full context."""
 
     # ── Crisis check ─────────────────────────────────────────────
     if detect_crisis(message):
         crisis_response = _call_gemini(
-            f"""You are a compassionate crisis support AI. The user has expressed 
-something that suggests they may be in distress. Respond with:
-1. Immediate warmth and validation (2-3 sentences)
-2. A grounding technique (e.g., 5-4-3-2-1 senses)
-3. Crisis resources formatted clearly
+            f"""The person you're talking to just said something that worries you. 
+They might be in real distress. Respond like a friend who is genuinely concerned:
+1. Let them know you hear them and you're worried (2-3 sentences, real and caring)
+2. Offer something to steady them right now (like the 5-4-3-2-1 senses exercise)
+3. Share these resources clearly
 
-User message: "{message}"
+Their message: "{message}"
 
-Respond warmly and concisely. Include these resources:
+Be real and warm. Include these resources:
 - 988 Suicide & Crisis Lifeline: Call or text 988 (24/7)
 - Crisis Text Line: Text HOME to 741741
 - International: https://www.iasp.info/resources/Crisis_Centres/
 
-End with: "You matter, and reaching out is a sign of strength." """,
+End with something genuine like: "I'm glad you're talking about this. That takes courage." """,
             api_key, model, temperature=0.3, max_tokens=1000,
         )
         return crisis_response
 
     # ── Build context ────────────────────────────────────────────
     system_context = _build_chat_context(
-        entries, history, chat_mode, empathy_level, psyche_profile
+        entries, history, chat_mode, empathy_level, psyche_profile,
+        goals=goals, recent_analysis_summary=recent_analysis_summary,
     )
 
     # Build conversation
@@ -2016,16 +2049,16 @@ def ai_reflection_prompts(entries, api_key, model="gemini-2.5-flash",
         active_goals = [g for g in goals if g.get("status") == "active"]
         if active_goals:
             goals_context = "\nActive goals: " + ", ".join(
-                g.get("goal_text", "") for g in active_goals[:5]
+                g.get("title", "") for g in active_goals[:5]
             )
 
     profile_context = ""
     if psyche_profile:
         profile_context = f"\nUser values: {json.dumps(psyche_profile)}"
 
-    prompt = f"""Based on these recent journal entries, generate 5 deeply personalized 
-reflection prompts that will help this person gain insight into their patterns 
-and grow emotionally.
+    prompt = f"""Based on these recent journal entries, generate 5 questions that will 
+actually make this person think. Like a curious friend who's been reading their 
+stuff and wants to help them see what they can't see on their own.
 
 ENTRIES:
 {entry_block}
@@ -2033,17 +2066,17 @@ ENTRIES:
 {profile_context}
 
 GUIDELINES:
-- Each prompt should target a specific pattern or theme from their entries
-- Mix introspective questions with action-oriented ones
-- Include one prompt related to gratitude or strength
-- Include one prompt that gently challenges a cognitive pattern
-- Make prompts feel warm, inviting, and specific (not generic)
-- Add a brief (1-sentence) explanation of WHY each prompt matters for them
+- Each question should target a specific pattern or theme from their entries
+- Mix "look inward" questions with "try something" questions
+- Include one about what's already going well
+- Include one that gently pokes at a thinking trap
+- Make them feel warm and specific to this person (not generic self-help)
+- Add a brief (1-sentence) note on why you're asking
 - Use emoji sparingly
 
 Format each as:
-**Prompt N:** [the prompt]
-*Why this matters:* [brief explanation]"""
+**Prompt N:** [the question]
+*Why this matters:* [brief note]"""
 
     return _call_gemini(prompt, api_key, model, temperature=0.8, max_tokens=1500)
 
@@ -2065,30 +2098,30 @@ def generate_session_summary(chat_messages, api_key,
         for m in chat_messages[-30:]
     )
 
-    prompt = f"""Summarize this MindMirror AI conversation into a concise, 
-compassionate session summary.
+    prompt = f"""Look back at this conversation and write a quick, warm recap - 
+like a friend summarizing what you talked about.
 
 CONVERSATION:
 {convo}
 
-PRODUCE:
-1. **Session Theme** — One sentence describing the core topic/emotion explored.
+WRITE:
+1. **What this was about** - One sentence on the main thing explored.
 
-2. **Key Insights** — 2-3 "aha moments" or important realizations from the conversation.
-   Be specific about what the user discovered.
+2. **What stood out** - 2-3 moments where something clicked or felt important.
+   Be specific about what they realized.
 
-3. **Emotional Arc** — How did the user's emotional state shift during the conversation?
-   (e.g., "Started feeling anxious about work → gained perspective on boundaries → 
-   ended with a sense of calm determination")
+3. **How it shifted** - How did things feel at the start vs. the end?
+   (e.g., "Started feeling stuck about work, figured out it was really about 
+   boundaries, ended feeling clearer")
 
-4. **Strengths Noticed** — 1-2 strengths the user demonstrated (self-awareness, 
-   vulnerability, problem-solving, etc.)
+4. **What you showed** - 1-2 strengths they brought to this conversation 
+   (being honest with themselves, asking hard questions, etc.)
 
-5. **Gentle Next Steps** — 2-3 small, actionable suggestions framed as invitations, 
-   not commands. (e.g., "You might try..." "Consider exploring..." "A small experiment 
-   could be...")
+5. **Maybe next** - 2-3 small things they could try, framed as ideas not 
+   instructions. (e.g., "You might try..." "Could be worth exploring..." 
+   "A small experiment: ...")
 
-STYLE: Warm, encouraging, concise. Use second person ("You explored...").
+STYLE: Warm, real, concise. Talk directly to them ("You explored...").
 Keep it under 300 words."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.5, max_tokens=1200)
@@ -2125,8 +2158,8 @@ def generate_narrative_summary(entries, api_key,
                 if val is not None:
                     data_summary += f"\n{metric.replace('_', ' ').title()}: {val}/100"
 
-    prompt = f"""You are a compassionate narrator creating a "{period} in review" 
-emotional journey story for a MindMirror AI user.
+    prompt = f"""You're writing a thoughtful "{period} in review" for someone you 
+care about, based on their journal entries.
 
 ENTRIES FROM THIS {period.upper()}:
 {entry_block}
@@ -2135,16 +2168,16 @@ PATTERN DATA:
 {data_summary}
 
 WRITE:
-A warm, narrative summary (250-400 words) that:
-1. Tells the "story" of their {period} in second person ("This {period}, you...")
-2. Uses 1-2 vivid metaphors to describe their emotional landscape
-3. Highlights moments of strength and vulnerability equally
+A warm recap (250-400 words) that:
+1. Tells the story of their {period} directly to them ("This {period}, you...")
+2. Uses 1-2 good metaphors to describe how things have been
+3. Gives equal weight to the hard parts and the strong moments
 4. Notes patterns or shifts with specific references
-5. Includes 2-3 "what-if" scenarios for growth
+5. Includes 2-3 "what if" ideas for the next stretch
    (e.g., "What if, next time you notice [pattern], you tried [alternative]?")
-6. Ends with a warm, forward-looking encouragement
+6. Ends with something genuine and forward-looking
 
-TONE: Like a wise, caring friend writing them a thoughtful letter.
+TONE: Like a thoughtful friend writing them a letter after really paying attention.
 Use emoji sparingly (2-3 max)."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.8, max_tokens=2000)
@@ -2165,37 +2198,36 @@ def ai_distortion_analysis(entries, distortion_data, api_key,
 
     dist_block = json.dumps(distortion_data, indent=2)
 
-    prompt = f"""You are MindMirror AI, analyzing cognitive distortion patterns 
-in a user's journal entries.
+    prompt = f"""You're looking at thinking patterns in someone's journal entries - 
+the kind of mental habits we all fall into without noticing.
 
 ENTRIES:
 {entry_block}
 
-DETECTED DISTORTIONS (from local analysis):
+DETECTED PATTERNS (from local analysis):
 {dist_block}
 
 PROVIDE:
-1. **Pattern Overview** — Which distortions appear most? Are they connected 
-   (e.g., catastrophizing often triggers should-statements)?
+1. **What keeps showing up** - Which thinking traps appear most? Are they 
+   connected (e.g., jumping to worst-case often leads to "should" statements)?
 
-2. **Context Analysis** — When and why do these distortions tend to appear? 
-   What situations or topics trigger them?
+2. **When and why** - What situations or topics seem to trigger these patterns?
 
-3. **Personalized Reframes** — For each major distortion, provide a specific, 
-   compassionate reframe using the user's own language and situations.
-   Format: "Instead of: [their thought] → Try: [reframe]"
+3. **Gentler ways to see it** - For each major pattern, offer a specific, 
+   kind reframe using their own words and situations.
+   Format: "Instead of: [their thought] -> Try: [reframe]"
 
-4. **Growth Opportunities** — 2-3 specific CBT-inspired exercises they could try.
-   Label each clearly (e.g., "Thought Record Exercise", "Evidence Gathering").
+4. **Things to try** - 2-3 specific exercises they could experiment with.
+   Label each clearly (e.g., "Evidence check", "Thought record").
 
-5. **Encouragement** — Note any entries where they DIDN'T fall into distortions 
-   or showed balanced thinking. Celebrate this.
+5. **What's already good** - Note any entries where they showed balanced 
+   thinking or caught themselves. That matters.
 
 IMPORTANT: 
-- Be extremely compassionate — distortions are human, not flaws
-- Frame everything as "patterns to explore" not problems to fix
-- This is NOT a diagnosis
-- Use warm, accessible language"""
+- Be really compassionate - these patterns are human, not flaws
+- Frame everything as habits to notice, not problems to fix
+- This is not a diagnosis
+- Use plain, warm language"""
 
     return _call_gemini(prompt, api_key, model, temperature=0.6, max_tokens=2500)
 
@@ -2225,8 +2257,8 @@ def ai_mood_forecast(entries, local_data, api_key,
         if local_data.get("topic_sentiment"):
             pattern_data += f"\nTopic-mood links: {json.dumps(dict(list(local_data['topic_sentiment'].items())[:5]))}"
 
-    prompt = f"""You are MindMirror AI creating a gentle "emotional weather forecast" 
-for the coming days based on the user's patterns.
+    prompt = f"""Based on what you've seen in their journal, create a gentle 
+"emotional weather forecast" for the coming days.
 
 RECENT ENTRIES:
 {entry_block}
@@ -2234,23 +2266,24 @@ RECENT ENTRIES:
 PATTERN DATA:
 {pattern_data}
 
-CREATE AN "EMOTIONAL WEATHER FORECAST" THAT INCLUDES:
+CREATE A FORECAST THAT INCLUDES:
 
-1. **🌤️ Outlook** — A brief, metaphorical forecast (e.g., "Partly cloudy with 
-   chances of breakthrough sunshine")
+1. **🌤️ Outlook** - A brief, honest take on what's ahead (use a weather 
+   metaphor if it fits naturally)
 
-2. **📅 Day-by-Day Hints** — If day-of-week patterns exist, note which days 
-   might be challenging and which might be bright
+2. **📅 Day-by-Day** - If day-of-week patterns exist, note which days might 
+   be tougher and which tend to feel lighter
 
-3. **⚡ Watch For** — 1-2 specific triggers or patterns to be aware of
+3. **⚡ Watch for** - 1-2 specific triggers or patterns to keep an eye on
 
-4. **🛡️ Protective Factors** — 2-3 things that have historically helped their mood
+4. **🛡️ What's helped before** - 2-3 things that have historically made 
+   things better for them
 
-5. **🌱 Opportunity** — One growth opportunity the coming days present
+5. **🌱 Opportunity** - One thing the coming days could be good for
 
-TONE: Warm, playful but honest. Like a caring meteorologist for emotions.
-Keep it concise (150-250 words). This is speculative and should feel 
-supportive, not prescriptive."""
+TONE: Warm and honest. Keep it simple. Like a friend who knows them well 
+giving a heads-up. Keep it concise (150-250 words). This is just pattern-based 
+guesswork and should feel supportive, not like a prediction."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.8, max_tokens=1200)
 
@@ -2286,13 +2319,11 @@ def generate_micro_celebration(entries, goals=None):
 
     if streak >= 7:
         celebrations.append(
-            f"🔥 {streak}-day journaling streak! Your future self "
-            f"is sending you a thank-you note ✨"
+            f"🔥 {streak} days straight. That takes something."
         )
     elif streak >= 3:
         celebrations.append(
-            f"✨ {streak} days in a row! You're building a "
-            f"powerful self-awareness habit."
+            f"✨ {streak} days running. You're showing up for yourself."
         )
 
     # Entry milestone
@@ -2301,8 +2332,8 @@ def generate_micro_celebration(entries, goals=None):
     for m in milestones:
         if count == m:
             celebrations.append(
-                f"🎉 {m} journal entries! That's {m} moments of "
-                f"self-reflection. Incredible."
+                f"🎉 {m} entries. That's {m} times you showed up "
+                f"and paid attention."
             )
 
     # Positive shift
@@ -2320,8 +2351,8 @@ def generate_micro_celebration(entries, goals=None):
             older_avg = sum(older_sents) / len(older_sents)
             if recent_avg > older_avg + 0.2:
                 celebrations.append(
-                    "📈 Your mood has been trending upward! "
-                    "Whatever you're doing, keep going 🌱"
+                    "📈 Things have been trending better lately. "
+                    "Whatever you're doing, it's working."
                 )
 
     # Emotion diversity
@@ -2333,8 +2364,8 @@ def generate_micro_celebration(entries, goals=None):
                 all_emos.update(emos.keys())
         if len(all_emos) >= 5:
             celebrations.append(
-                f"🎨 You've expressed {len(all_emos)} different emotions "
-                f"recently. That emotional range is a strength!"
+                f"🎨 You've named {len(all_emos)} different emotions "
+                f"recently. That range is a real strength."
             )
 
     # Coping wins (detected positive entries after negative ones)
@@ -2345,8 +2376,8 @@ def generate_micro_celebration(entries, goals=None):
             if prev_sent is not None and curr_sent is not None:
                 if prev_sent < -0.3 and curr_sent > 0.1:
                     celebrations.append(
-                        "💪 You bounced back from a tough moment — "
-                        "that's resilience in action!"
+                        "💪 You came back from a rough patch. "
+                        "That's not nothing."
                     )
                     break
 
@@ -2355,9 +2386,9 @@ def generate_micro_celebration(entries, goals=None):
         completed = [g for g in goals if g.get("status") == "completed"]
         if completed:
             celebrations.append(
-                f"🏆 You've completed {len(completed)} goal"
-                f"{'s' if len(completed) > 1 else ''}! "
-                f"Each one is proof of your growth."
+                f"🏆 {len(completed)} goal"
+                f"{'s' if len(completed) > 1 else ''} done. "
+                f"You said you'd do it and you did."
             )
 
     return celebrations[:3]  # max 3 at a time

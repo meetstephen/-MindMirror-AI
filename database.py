@@ -5,6 +5,8 @@
 import sqlite3
 import json
 import os
+import hashlib
+import secrets
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -35,6 +37,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
+            password_hash TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
@@ -145,8 +148,69 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS rate_limits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            call_type TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            attempt_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
+
+    # Run migrations for existing databases
+    migrate_db()
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Database Migration (add columns safely to existing tables)
+# ───────────────────────────────────────────────────────────────────
+
+def migrate_db():
+    """Safely add password_hash column to existing users table if missing."""
+    conn = _connect()
+    cursor = conn.execute("PRAGMA table_info(users)")
+    columns = [row["name"] for row in cursor.fetchall()]
+    if "password_hash" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+        conn.commit()
+    conn.close()
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Password Hashing Utilities
+# ───────────────────────────────────────────────────────────────────
+
+def _hash_password(password: str) -> str:
+    """Hash a password using PBKDF2-HMAC-SHA256 with a random salt."""
+    salt = secrets.token_hex(16)
+    pw_hash = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000
+    )
+    return f"{salt}:{pw_hash.hex()}"
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verify a password against a stored PBKDF2 hash."""
+    try:
+        salt, pw_hash_hex = stored_hash.split(":", 1)
+        pw_hash = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000
+        )
+        return secrets.compare_digest(pw_hash.hex(), pw_hash_hex)
+    except (ValueError, AttributeError):
+        return False
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -154,6 +218,9 @@ def init_db():
 # ───────────────────────────────────────────────────────────────────
 
 def get_or_create_user(username: str) -> int:
+    """Get existing user or create one without a password.
+    Deprecated: Use create_user/verify_user for new auth flows.
+    Kept for backward compatibility with internal operations."""
     conn = _connect()
     row = conn.execute(
         "SELECT id FROM users WHERE username = ?", (username,)
@@ -168,6 +235,48 @@ def get_or_create_user(username: str) -> int:
         uid = cur.lastrowid
     conn.close()
     return uid
+
+
+def user_exists(username: str) -> bool:
+    """Check if a user with the given username exists."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT id FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def create_user(username: str, password: str) -> int:
+    """Create a new user with a hashed password. Returns the user id."""
+    pw_hash = _hash_password(password)
+    conn = _connect()
+    cur = conn.execute(
+        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+        (username, pw_hash),
+    )
+    conn.commit()
+    uid = cur.lastrowid
+    conn.close()
+    return uid
+
+
+def verify_user(username: str, password: str) -> Optional[int]:
+    """Verify username and password. Returns user id if valid, None otherwise."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT id, password_hash FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    stored_hash = row["password_hash"]
+    if not stored_hash:
+        # Legacy user without password - cannot authenticate via password
+        return None
+    if _verify_password(password, stored_hash):
+        return row["id"]
+    return None
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -276,6 +385,28 @@ def get_analyses(user_id, limit=20) -> List[Dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_latest_analysis(user_id, analysis_type="ai") -> Optional[str]:
+    """Get the most recent analysis of a given type."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT result FROM analyses WHERE user_id = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+        (user_id, analysis_type),
+    ).fetchone()
+    conn.close()
+    return row["result"] if row else None
+
+
+def get_recent_entries_text(user_id, limit=5) -> str:
+    """Get concatenated recent entry content for quick context building."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT content FROM entries WHERE user_id = ? ORDER BY entry_date DESC LIMIT ?",
+        (user_id, limit),
+    ).fetchall()
+    conn.close()
+    return " ".join(r["content"] for r in rows) if rows else ""
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -534,3 +665,88 @@ def get_crisis_logs(user_id) -> List[Dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Daily Check-In Helpers
+# ───────────────────────────────────────────────────────────────────
+
+def has_checked_in_today(user_id) -> bool:
+    """Return True if the user has a daily_checkin for today (UTC)."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT id FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND date(created_at) = date('now')",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def get_today_checkin(user_id) -> Optional[Dict]:
+    """Return the user's daily check-in for today (UTC), or None."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT * FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND date(created_at) = date('now') ORDER BY created_at DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    if row:
+        d = dict(row)
+        try:
+            d["scores"] = json.loads(d.get("scores_json") or "[]")
+        except (json.JSONDecodeError, TypeError):
+            d["scores"] = []
+        return d
+    return None
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Rate Limiting (server-side, per-user)
+# ───────────────────────────────────────────────────────────────────
+
+def record_ai_call(user_id) -> None:
+    """Record an AI call timestamp for the given user."""
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO rate_limits (user_id, call_type) VALUES (?, 'ai_call')",
+        (user_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def count_recent_ai_calls(user_id, minutes: int = 10) -> int:
+    """Count AI calls by a user within the last N minutes."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM rate_limits WHERE user_id = ? AND call_type = 'ai_call' AND created_at > datetime('now', ?)",
+        (user_id, f"-{minutes} minutes"),
+    ).fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Login Attempt Tracking (brute-force protection)
+# ───────────────────────────────────────────────────────────────────
+
+def record_login_attempt(username: str) -> None:
+    """Record a failed login attempt for the given username."""
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO login_attempts (username) VALUES (?)",
+        (username,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def count_recent_login_attempts(username: str, minutes: int = 15) -> int:
+    """Count failed login attempts for a username within the last N minutes."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM login_attempts WHERE username = ? AND attempt_at > datetime('now', ?)",
+        (username, f"-{minutes} minutes"),
+    ).fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
