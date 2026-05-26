@@ -1316,7 +1316,8 @@ def interpret_gad7(total):
 # ║  narrative summaries, mood forecasting                          ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1615,24 +1616,20 @@ def local_analysis(entries):
 #  GEMINI HELPERS
 # ══════════════════════════════════════════════════════════════════
 
-def _configure_gemini(api_key):
-    genai.configure(api_key=api_key)
-
-
 def _call_gemini(prompt, api_key, model="gemini-2.5-flash",
                  temperature=0.7, max_tokens=4096):
     """Safely call Gemini and return text or error string."""
     try:
-        _configure_gemini(api_key)
-        m = genai.GenerativeModel(model)
-        resp = m.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
             ),
         )
-        return resp.text
+        return response.text
     except Exception as exc:
         return f"⚠️ AI error: {exc}"
 
