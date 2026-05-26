@@ -369,6 +369,28 @@ def get_analyses(user_id, limit=20) -> List[Dict]:
     return [dict(r) for r in rows]
 
 
+def get_latest_analysis(user_id, analysis_type="ai") -> Optional[str]:
+    """Get the most recent analysis of a given type."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT result FROM analyses WHERE user_id = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+        (user_id, analysis_type),
+    ).fetchone()
+    conn.close()
+    return row["result"] if row else None
+
+
+def get_recent_entries_text(user_id, limit=5) -> str:
+    """Get concatenated recent entry content for quick context building."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT content FROM entries WHERE user_id = ? ORDER BY entry_date DESC LIMIT ?",
+        (user_id, limit),
+    ).fetchall()
+    conn.close()
+    return " ".join(r["content"] for r in rows) if rows else ""
+
+
 # ───────────────────────────────────────────────────────────────────
 #  Chat Messages
 # ───────────────────────────────────────────────────────────────────

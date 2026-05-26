@@ -1657,7 +1657,7 @@ CONSENT_NOTICE_CHAT = (
 # ══════════════════════════════════════════════════════════════════
 
 def ai_analysis(entries, api_key, model="gemini-2.5-flash",
-                local_data=None, psyche_profile=None):
+                local_data=None, psyche_profile=None, goals=None):
     """Run comprehensive AI analysis using Gemini."""
 
     # Build entry summaries
@@ -1731,6 +1731,14 @@ def ai_analysis(entries, api_key, model="gemini-2.5-flash",
     if psyche_profile:
         profile_context = f"\n\nUser psyche profile: {json.dumps(psyche_profile)}"
 
+    # Goals context
+    goals_context = ""
+    if goals:
+        active_goals = [g for g in goals if g.get("status") == "active"]
+        if active_goals:
+            goals_list = ", ".join(g.get("title", "") for g in active_goals[:5])
+            goals_context = f"\n\nUSER'S ACTIVE GOALS: {goals_list}"
+
     prompt = f"""You are someone who has read all of this person's journal entries carefully 
 and notices patterns. You combine real insight with genuine warmth - like a friend 
 who reads a lot of psychology and pays close attention.
@@ -1739,6 +1747,7 @@ Write like you're explaining what you've noticed to them over coffee. Be honest
 but kind. Use simple language.
 
 {profile_context}
+{goals_context}
 
 JOURNAL ENTRIES:
 {entry_block}
@@ -1783,6 +1792,7 @@ HOW TO WRITE THIS:
 - If you notice anything that sounds like a crisis, gently include support resources
 - Frame everything as patterns to explore, not diagnoses
 - Acknowledge this is based on limited entries and is not a clinical assessment
+- If the user has active goals listed above, note any connections between journal patterns and those stated goals
 
 Write a thoughtful, insightful report."""
 
@@ -1853,7 +1863,8 @@ CHAT_MODE_PROMPTS = {
 
 
 def _build_chat_context(entries, history, chat_mode="open",
-                        empathy_level=0.5, psyche_profile=None):
+                        empathy_level=0.5, psyche_profile=None,
+                        goals=None, recent_analysis_summary=None):
     """Build a rich context block for the chat system prompt."""
     context_parts = []
 
@@ -1934,6 +1945,25 @@ def _build_chat_context(entries, history, chat_mode="open",
                 "If these come up naturally, gently point them out."
             )
 
+    # Active goals context
+    if goals:
+        active_goals = [g for g in goals if g.get("status") == "active"]
+        if active_goals:
+            goals_lines = []
+            for g in active_goals[:5]:
+                title = g.get("title", "")
+                progress = g.get("progress", 0)
+                goals_lines.append(f"  - {title} (progress: {progress:.0f}%)")
+            context_parts.append(
+                "ACTIVE GOALS:\n" + "\n".join(goals_lines)
+            )
+
+    # Recent analysis insights
+    if recent_analysis_summary:
+        context_parts.append(
+            f"RECENT INSIGHTS: {recent_analysis_summary}"
+        )
+
     # Response length guidance
     context_parts.append(
         "RESPONSE GUIDELINES:\n"
@@ -1953,7 +1983,7 @@ def _build_chat_context(entries, history, chat_mode="open",
 
 def ai_chat(message, entries, history, api_key,
             model="gemini-2.5-flash", chat_mode="open",
-            empathy_level=0.5, psyche_profile=None):
+            empathy_level=0.5, psyche_profile=None, goals=None):
     """Send a chat message to Gemini with full context."""
 
     # ── Crisis check ─────────────────────────────────────────────
@@ -1979,7 +2009,8 @@ End with something genuine like: "I'm glad you're talking about this. That takes
 
     # ── Build context ────────────────────────────────────────────
     system_context = _build_chat_context(
-        entries, history, chat_mode, empathy_level, psyche_profile
+        entries, history, chat_mode, empathy_level, psyche_profile,
+        goals=goals,
     )
 
     # Build conversation
@@ -2017,7 +2048,7 @@ def ai_reflection_prompts(entries, api_key, model="gemini-2.5-flash",
         active_goals = [g for g in goals if g.get("status") == "active"]
         if active_goals:
             goals_context = "\nActive goals: " + ", ".join(
-                g.get("goal_text", "") for g in active_goals[:5]
+                g.get("title", "") for g in active_goals[:5]
             )
 
     profile_context = ""

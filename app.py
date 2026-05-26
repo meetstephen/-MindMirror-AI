@@ -35,6 +35,8 @@ from database import (
     get_sentiments_over_time,
     save_analysis,
     get_analyses,
+    get_latest_analysis,
+    get_recent_entries_text,
     save_chat_msg,
     get_chat_msgs,
     get_chat_sessions,
@@ -1450,6 +1452,23 @@ def page_journal():
                 st.success("✅ Entry saved!")
                 st.balloons()
 
+                # Check for connections to active goals
+                _active_goals = get_goals(uid, status="active")
+                if _active_goals:
+                    _entry_words = set(
+                        w for w in full_content.lower().split()
+                        if len(w) > 3
+                    )
+                    for _g in _active_goals:
+                        _goal_words = set(
+                            w for w in _g.get("title", "").lower().split()
+                            if len(w) > 3
+                        )
+                        if _entry_words & _goal_words:
+                            st.caption(
+                                f"This connects to your goal: {_g['title']}"
+                            )
+
                 # Show celebration if earned
                 updated_entries = get_entries(uid, limit=10)
                 _cele = generate_micro_celebration(updated_entries)
@@ -2572,6 +2591,11 @@ def page_chat():
                     "Try again in a few minutes."
                 )
             else:
+                # Fetch active goals and recent analysis for context
+                active_goals = get_goals(uid, status="active")
+                recent_analysis = get_latest_analysis(uid, "ai")
+                analysis_summary = recent_analysis[:500] if recent_analysis else None
+
                 with st.spinner("Reflecting…"):
                     reply = ai_chat(
                         prompt,
@@ -2585,6 +2609,7 @@ def page_chat():
                             else active_empathy
                         ),
                         psyche_profile=get_psyche_profile(uid),
+                        goals=active_goals,
                     )
                 st.markdown(reply)
 
@@ -2592,6 +2617,34 @@ def page_chat():
                     uid, "assistant", reply,
                     st.session_state.chat_session,
                 )
+
+                # Check if reply contains action-like language
+                _action_phrases = ["try ", "consider ", "experiment ", "practice ", "start ", "commit to"]
+                if reply and any(phrase in reply.lower() for phrase in _action_phrases):
+                    # Extract first sentence with action language
+                    _sentences = [s.strip() for s in reply.replace("\n", " ").split(".") if s.strip()]
+                    _goal_sentence = ""
+                    for _s in _sentences:
+                        if any(phrase in _s.lower() for phrase in _action_phrases):
+                            _goal_sentence = _s.strip()
+                            break
+                    if _goal_sentence:
+                        if st.button("🎯 Turn this into a goal?", key="_chat_to_goal"):
+                            st.session_state["_prefill_goal"] = _goal_sentence[:200]
+                            st.rerun()
+
+    # ── Goal prefill from chat suggestion ────────────────────────
+    if st.session_state.get("_prefill_goal"):
+        st.markdown("---")
+        st.markdown("#### 🎯 Create a Goal")
+        _prefill = st.session_state.pop("_prefill_goal")
+        goal_text = st.text_input(
+            "Goal title:", value=_prefill, key="_chat_goal_input"
+        )
+        if st.button("Save Goal", key="_chat_goal_save"):
+            if goal_text.strip():
+                save_goal(uid, goal_text.strip())
+                st.success(f"Goal saved: {goal_text.strip()}")
 
     # ── Context panel ────────────────────────────────────────────
     with st.expander("📊 Your Recent Context (visible to AI)", expanded=False):
@@ -2723,6 +2776,22 @@ def page_dashboard():
     # Celebrations
     goals = get_goals(uid)
     show_celebrations(entries, goals)
+
+    # ── Recent Insights Card ─────────────────────────────────────
+    latest_analysis = get_latest_analysis(uid, "ai")
+    if latest_analysis:
+        # Extract first 2-3 lines/bullet points
+        _lines = [ln.strip() for ln in latest_analysis.split("\n") if ln.strip()]
+        _preview_lines = _lines[:3]
+        _preview_text = "\n".join(_preview_lines)
+        st.markdown(
+            f'<div class="mm-card">'
+            f'<h4>💡 Recent Insights</h4>'
+            f'<p>{_preview_text[:300]}</p>'
+            f'<p><em>See full analysis on the Analysis page.</em></p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
 
@@ -3573,6 +3642,37 @@ def page_skills():
             "Each one has something you can try right now."
         )
         st.markdown("")
+
+        # ── Recommended for you ──────────────────────────────────
+        _recent_text_entries = get_entries(uid, limit=5)
+        _recommended_cats = set()
+        for _re in _recent_text_entries:
+            _emos = detect_emotions(_re.get("content", ""))
+            if _emos:
+                if "fear" in _emos or "exhaustion" in _emos:
+                    _recommended_cats.add("distress_tolerance")
+                    _recommended_cats.add("mindfulness")
+                if "shame" in _emos:
+                    _recommended_cats.add("self_compassion")
+                if "confusion" in _emos or "anger" in _emos:
+                    _recommended_cats.add("cognitive_skills")
+
+        if _recommended_cats:
+            st.markdown("#### ✨ Recommended for you")
+            st.caption("Based on your recent entries:")
+            _rec_cols = st.columns(len(_recommended_cats))
+            for _ri, _rcat in enumerate(sorted(_recommended_cats)):
+                _rcat_title = SKILL_MODULES[_rcat]["title"] if _rcat in SKILL_MODULES else _rcat
+                with _rec_cols[_ri]:
+                    if st.button(
+                        f"⭐ {_rcat_title}",
+                        key=f"_skill_rec_{_rcat}",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        st.session_state._skill_category = _rcat
+                        st.rerun()
+            st.markdown("---")
 
         # Category selector
         cat_keys = list(SKILL_MODULES.keys())
