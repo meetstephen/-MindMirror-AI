@@ -278,20 +278,19 @@ def apply_theme():
                     tint = "#FF9800"   # amber — slightly low
                 else:
                     tint = "#9C27B0"   # soft purple — calming for distress
-                adaptive_css = f"""
-                <style>
-                .mm-card {{
-                    border-left: 4px solid {tint} !important;
-                }}
-                .mm-celebration {{
-                    border-left: 4px solid {tint} !important;
-                }}
-                </style>
-                """
+                adaptive_css = (
+                    "<style>"
+                    f".mm-card {{ border-left: 4px solid {tint} !important; }} "
+                    f".mm-celebration {{ border-left: 4px solid {tint} !important; }}"
+                    "</style>"
+                )
         except Exception:
             pass
 
-    st.markdown(base_css + adaptive_css, unsafe_allow_html=True)
+    if base_css:
+        st.markdown(base_css, unsafe_allow_html=True)
+    if adaptive_css:
+        st.markdown(adaptive_css, unsafe_allow_html=True)
 
 apply_theme()
 
@@ -325,6 +324,20 @@ def _pcolors() -> List[str]:
 def _accent() -> str:
     """Get the current theme's primary accent color."""
     return get_plotly_colors(st.session_state.theme)["accent"]
+
+
+def _hex_to_rgba(hex_color: str, alpha: float = 0.2) -> str:
+    """Convert a hex color string to rgba() format for Plotly compatibility."""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) == 3:
+        hex_color = "".join(c * 2 for c in hex_color)
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return f"rgba({r}, {g}, {b}, {alpha})"
+    except (ValueError, IndexError):
+        return f"rgba(100, 255, 218, {alpha})"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -3205,7 +3218,7 @@ def page_dashboard():
             r=values_closed,
             theta=labels_closed,
             fill="toself",
-            fillcolor=f"{_accent()}33",
+            fillcolor=_hex_to_rgba(_accent(), 0.2),
             line=dict(color=_accent(), width=2),
             name="Your Fingerprint",
         ))
@@ -3275,7 +3288,7 @@ def page_dashboard():
             r=gm_closed_v,
             theta=gm_closed_l,
             fill="toself",
-            fillcolor="#7BDFF233",
+            fillcolor=_hex_to_rgba("#7BDFF2", 0.2),
             line=dict(color="#7BDFF2", width=2),
             name="Growth",
         ))
