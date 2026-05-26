@@ -647,3 +647,38 @@ def get_crisis_logs(user_id) -> List[Dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Daily Check-In Helpers
+# ───────────────────────────────────────────────────────────────────
+
+def has_checked_in_today(user_id) -> bool:
+    """Return True if the user has a daily_checkin for today."""
+    conn = _connect()
+    today = datetime.now().strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT id FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND created_at LIKE ?",
+        (user_id, f"{today}%"),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def get_today_checkin(user_id) -> Optional[Dict]:
+    """Return the user's daily check-in for today, or None."""
+    conn = _connect()
+    today = datetime.now().strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT * FROM mood_checkins WHERE user_id = ? AND checkin_type = 'daily_checkin' AND created_at LIKE ? ORDER BY created_at DESC LIMIT 1",
+        (user_id, f"{today}%"),
+    ).fetchone()
+    conn.close()
+    if row:
+        d = dict(row)
+        try:
+            d["scores"] = json.loads(d.get("scores_json") or "[]")
+        except (json.JSONDecodeError, TypeError):
+            d["scores"] = []
+        return d
+    return None

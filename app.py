@@ -14,6 +14,7 @@ import json
 import os
 import re
 import random
+import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 import plotly.express as px
@@ -52,6 +53,8 @@ from database import (
     get_growth_metrics,
     log_crisis_event,
     get_crisis_logs,
+    has_checked_in_today,
+    get_today_checkin,
 )
 
 # backup and database imports
@@ -620,6 +623,32 @@ def render_sidebar():
             except Exception:
                 pass
 
+        # ── Contextual Nudge ─────────────────────────────────────
+        if ec > 0:
+            try:
+                _nudge_entries = get_entries(uid, limit=10)
+                _today_str = datetime.now().strftime("%Y-%m-%d")
+                _has_today_entry = any(
+                    (e.get("entry_date") or "")[:10] == _today_str
+                    for e in _nudge_entries
+                )
+                _nudge_streak = _streak(_nudge_entries)
+                _last_sent = None
+                if _nudge_entries:
+                    _last_sent = _nudge_entries[0].get("sentiment")
+
+                # Priority: no entry today > streak display > low mood
+                if not _has_today_entry:
+                    st.caption(
+                        "📝 Haven't written today yet - even a sentence counts."
+                    )
+                elif _nudge_streak >= 3:
+                    st.caption(f"\U0001f525 {_nudge_streak}-day streak! Keep it up.")
+                elif _last_sent is not None and _last_sent < -0.3:
+                    st.caption("💙 Checking in - how are things today?")
+            except Exception:
+                pass
+
         st.markdown("---")
 
         # ── Active Goal Mini-View ────────────────────────────────
@@ -841,7 +870,8 @@ def _entry_mood_icon(sentiment) -> str:
 
 
 def _streak(entries: List[Dict]) -> int:
-    """Calculate the current consecutive-day journaling streak."""
+    """Calculate the current consecutive-day journaling streak.
+    Allows a single 1-day grace period (one missed day keeps the streak)."""
     dates = sorted(set(
         e.get("entry_date", "")[:10]
         for e in entries
@@ -850,17 +880,39 @@ def _streak(entries: List[Dict]) -> int:
     if not dates:
         return 0
     streak = 1
+    grace_used = False
     for i in range(len(dates) - 1, 0, -1):
         try:
             d1 = datetime.strptime(dates[i], "%Y-%m-%d")
             d2 = datetime.strptime(dates[i - 1], "%Y-%m-%d")
-            if (d1 - d2).days == 1:
+            gap = (d1 - d2).days
+            if gap == 1:
                 streak += 1
+            elif gap == 2 and not grace_used:
+                # Allow one missed day
+                streak += 1
+                grace_used = True
             else:
                 break
         except ValueError:
             break
     return streak
+
+
+def _handle_ai_response(result: str, context_label: str = "AI") -> Tuple[bool, str]:
+    """Check if an AI result is an error and display a friendly message if so.
+    Returns (is_error, result)."""
+    if not result:
+        return (True, "")
+    error_indicators = ["Error:", "AI error", "\u26a0\ufe0f"]
+    is_error = any(indicator in result for indicator in error_indicators)
+    if is_error:
+        st.warning(
+            "Something went wrong reaching the AI. "
+            "This usually means the API key needs checking or there is a "
+            "temporary issue. Give it another try in a moment."
+        )
+    return (is_error, result)
 
 
 def _emotion_tags_html(emotions_raw) -> str:
@@ -953,6 +1005,56 @@ def page_onboarding():
                 st.rerun()
             else:
                 st.warning("Pick at least one value.")
+
+        # ── Try with sample data ─────────────────────────────────
+        st.markdown("")
+        st.markdown("---")
+        st.caption("Want to see what MindMirror looks like with data?")
+        if st.button("🧪 Try with sample data", key="_onb_sample_data"):
+            _sample_entries = [
+                {
+                    "days_ago": 1,
+                    "content": "Went for a morning walk today and the air felt amazing. I noticed the trees starting to bloom and felt genuinely grateful for the small things.",
+                    "sentiment": 0.7,
+                },
+                {
+                    "days_ago": 2,
+                    "content": "Work was really busy today. Back-to-back meetings and I barely had time to eat lunch. Not bad, just a lot going on.",
+                    "sentiment": 0.05,
+                },
+                {
+                    "days_ago": 3,
+                    "content": "Feeling tired and a bit drained. Slept poorly last night and it affected my whole day. Hard to concentrate on anything.",
+                    "sentiment": -0.4,
+                },
+                {
+                    "days_ago": 4,
+                    "content": "Had a great phone call with an old friend today. We talked for over an hour and I felt so much lighter afterward. Connection matters.",
+                    "sentiment": 0.65,
+                },
+                {
+                    "days_ago": 5,
+                    "content": "Feeling uncertain about where things are headed. Not exactly bad, but there is this nagging sense that I should be doing more or making changes.",
+                    "sentiment": -0.15,
+                },
+            ]
+            _uid = st.session_state.user_id
+            for _se in _sample_entries:
+                _date = (datetime.now() - timedelta(days=_se["days_ago"])).strftime("%Y-%m-%d 12:00")
+                _emos = detect_emotions(_se["content"])
+                _tags = ["sample_data"]
+                save_entry(
+                    user_id=_uid,
+                    content=_se["content"],
+                    entry_date=_date,
+                    sentiment=_se["sentiment"],
+                    emotions=_emos if _emos else None,
+                    tags=_tags,
+                )
+            st.success(
+                "Added 5 sample entries so you can explore. "
+                "You can delete them anytime from your journal."
+            )
 
     # ── Step 2: Support Style & Therapeutic Mode ─────────────────
     elif step == 2:
@@ -1524,6 +1626,10 @@ def page_journal():
                 else:
                     progress = st.progress(0)
                     imported = 0
+                    skipped_short = 0
+                    _pos_count = 0
+                    _neu_count = 0
+                    _neg_count = 0
 
                     for i, chunk in enumerate(chunks):
                         progress.progress((i + 1) / len(chunks))
@@ -1543,6 +1649,11 @@ def page_journal():
                             text = chunk
 
                         if not text:
+                            continue
+
+                        # Min-length validation
+                        if len(text) < 10:
+                            skipped_short += 1
                             continue
 
                         # Sanitize imported content
@@ -1566,12 +1677,42 @@ def page_journal():
                         )
                         imported += 1
 
+                        # Track sentiment categories
+                        if sent is not None:
+                            if sent > 0.2:
+                                _pos_count += 1
+                            elif sent < -0.2:
+                                _neg_count += 1
+                            else:
+                                _neu_count += 1
+
                     progress.empty()
                     st.success(
                         f"✅ Imported **{imported}** "
                         f"entr{'ies' if imported != 1 else 'y'} "
                         f"with auto-tagging!"
                     )
+
+                    # Summary breakdown
+                    if imported > 0:
+                        _summary_parts = []
+                        if _pos_count:
+                            _summary_parts.append(f"{_pos_count} positive")
+                        if _neu_count:
+                            _summary_parts.append(f"{_neu_count} neutral")
+                        if _neg_count:
+                            _summary_parts.append(f"{_neg_count} negative")
+                        if _summary_parts:
+                            st.caption(
+                                "Sentiment breakdown: " + ", ".join(_summary_parts)
+                            )
+
+                    if skipped_short > 0:
+                        st.caption(
+                            f"Skipped {skipped_short} "
+                            f"entr{'ies' if skipped_short != 1 else 'y'} "
+                            f"that were too short (min 10 characters)."
+                        )
 
                     if imported >= 3:
                         st.info(
@@ -2252,11 +2393,13 @@ def page_analysis():
                 psyche_profile=profile,
             )
 
-        st.markdown("### 🤖 AI Deep Analysis Report")
-        st.markdown(result)
-        st.session_state.current_analysis = result
-        save_analysis(uid, "ai", result)
-        st.success("✅ Analysis saved to your history.")
+        _ai_err, result = _handle_ai_response(result, "Analysis")
+        if not _ai_err:
+            st.markdown("### 🤖 AI Deep Analysis Report")
+            st.markdown(result)
+            st.session_state.current_analysis = result
+            save_analysis(uid, "ai", result)
+            st.success("✅ Analysis saved to your history.")
 
         # ── Post-analysis AI actions ─────────────────────────────
         st.markdown("")
@@ -2611,12 +2754,18 @@ def page_chat():
                         psyche_profile=get_psyche_profile(uid),
                         goals=active_goals,
                     )
-                st.markdown(reply)
 
-                save_chat_msg(
-                    uid, "assistant", reply,
-                    st.session_state.chat_session,
-                )
+                _chat_err, reply = _handle_ai_response(reply, "Chat")
+                if _chat_err:
+                    if st.button("🔄 Retry", key="_chat_retry"):
+                        st.rerun()
+                else:
+                    st.markdown(reply)
+
+                    save_chat_msg(
+                        uid, "assistant", reply,
+                        st.session_state.chat_session,
+                    )
 
                 # Check if reply contains action-like language
                 _action_phrases = ["try ", "consider ", "experiment ", "practice ", "start ", "commit to"]
@@ -2749,6 +2898,50 @@ def _severity_label(total, scale):
 def page_dashboard():
     uid = st.session_state.user_id
     entries = get_entries(uid, limit=200)
+
+    # ─────────────────────────────────────────────────────────────
+    #  0. DAILY CHECK-IN (lightweight, once per day)
+    # ─────────────────────────────────────────────────────────────
+    _checkin_emojis = {
+        "Great": "\U0001f929",
+        "Good": "\U0001f60a",
+        "Okay": "\U0001f642",
+        "Meh": "\U0001f611",
+        "Rough": "\U0001f614",
+    }
+
+    if has_checked_in_today(uid):
+        today_ci = get_today_checkin(uid)
+        if today_ci:
+            scores = today_ci.get("scores", [])
+            mood_label = scores[0] if scores else "Okay"
+            emoji = _checkin_emojis.get(mood_label, "\U0001f642")
+            st.caption(f"{emoji} You checked in today - feeling **{mood_label}**")
+    else:
+        st.markdown("**How are you feeling right now?**")
+        ci_cols = st.columns(5)
+        for idx, (label, emoji) in enumerate(_checkin_emojis.items()):
+            with ci_cols[idx]:
+                if st.button(
+                    f"{emoji}\n{label}",
+                    key=f"_daily_ci_{label}",
+                    use_container_width=True,
+                ):
+                    save_mood_checkin(uid, "daily_checkin", [label], 0)
+                    st.rerun()
+
+        ci_note = st.text_input(
+            "Optional one-line note:",
+            key="_daily_ci_note",
+            placeholder="Anything on your mind?",
+            label_visibility="collapsed",
+        )
+        if ci_note and ci_note.strip():
+            if st.button("Save note", key="_daily_ci_note_save"):
+                save_mood_checkin(uid, "daily_checkin", [ci_note.strip()], 0)
+                st.rerun()
+
+    st.markdown("---")
 
     # ─────────────────────────────────────────────────────────────
     #  1. WELCOME BANNER
@@ -3557,18 +3750,20 @@ def page_dashboard():
                         period=narr_period,
                     )
 
-                st.markdown(
-                    f'<div class="mm-card">'
-                    f'<h4>📖 Your {narr_period.title()} in Review</h4>'
-                    f'{narrative}</div>',
-                    unsafe_allow_html=True,
-                )
+                _narr_err, narrative = _handle_ai_response(narrative, "Narrative")
+                if not _narr_err:
+                    st.markdown(
+                        f'<div class="mm-card">'
+                        f'<h4>📖 Your {narr_period.title()} in Review</h4>'
+                        f'{narrative}</div>',
+                        unsafe_allow_html=True,
+                    )
 
-                save_analysis(
-                    uid,
-                    f"narrative_{narr_period}",
-                    narrative,
-                )
+                    save_analysis(
+                        uid,
+                        f"narrative_{narr_period}",
+                        narrative,
+                    )
 
     # ── Saved narrative display ──────────────────────────────────
     recent_analyses = get_analyses(uid, limit=5)
@@ -4570,7 +4765,6 @@ def page_history():
 # ║  🚦 Main Router                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-import sqlite3   # for delete_all_user_data helper
 
 
 # ═══════════════════════════════════════════════════════════════════
