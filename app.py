@@ -59,6 +59,9 @@ from database import (
     count_recent_ai_calls,
     record_login_attempt,
     count_recent_login_attempts,
+    create_session_token,
+    verify_session_token,
+    delete_session_token,
 )
 
 # backup and database imports
@@ -220,7 +223,24 @@ except (KeyError, FileNotFoundError, AttributeError):
 # ── Initialise database (idempotent — safe to run on every load) ─
 init_db()
 
-# ── Auto-login removed for security (URL params no longer grant access) ──
+# ── Auto-login from session token ────────────────────────────────
+if not st.session_state.logged_in:
+    _params = st.query_params
+    if "session" in _params:
+        _token = _params["session"]
+        if isinstance(_token, str) and _token.strip():
+            _uid = verify_session_token(_token.strip())
+            if _uid is not None:
+                from database import _connect
+                _conn = _connect()
+                _row = _conn.execute(
+                    "SELECT username FROM users WHERE id = ?", (_uid,)
+                ).fetchone()
+                _conn.close()
+                if _row:
+                    st.session_state.username = _row["username"]
+                    st.session_state.user_id = _uid
+                    st.session_state.logged_in = True
 
 # ── Load psyche profile from DB (once per session) ──────────────
 if (
@@ -486,6 +506,7 @@ def render_sidebar():
                     key="_login_password",
                     placeholder="Your password",
                 )
+                remember_me = st.checkbox("Remember me", value=True, key="_remember_me")
                 if st.button(
                     "🔑 Login",
                     use_container_width=True,
@@ -503,6 +524,9 @@ def render_sidebar():
                                 st.session_state.username = _clean_user
                                 st.session_state.user_id = uid
                                 st.session_state.logged_in = True
+                                if remember_me:
+                                    token = create_session_token(uid)
+                                    st.query_params["session"] = token
                                 st.rerun()
                             else:
                                 record_login_attempt(_clean_user)
@@ -528,6 +552,7 @@ def render_sidebar():
                     key="_reg_password2",
                     placeholder="Repeat password",
                 )
+                remember_me_reg = st.checkbox("Remember me", value=True, key="_remember_me_reg")
                 if st.button(
                     "🚀 Register",
                     use_container_width=True,
@@ -548,6 +573,9 @@ def render_sidebar():
                         st.session_state.username = _clean_reg
                         st.session_state.user_id = uid
                         st.session_state.logged_in = True
+                        if remember_me_reg:
+                            token = create_session_token(uid)
+                            st.query_params["session"] = token
                         st.rerun()
 
             return  # nothing else to show when logged out
@@ -841,6 +869,11 @@ def render_sidebar():
 
         # ── Logout ───────────────────────────────────────────────
         if st.button("🚪 Logout", use_container_width=True):
+            # Clear session token
+            _params = st.query_params
+            if "session" in _params:
+                delete_session_token(_params["session"])
+            st.query_params.clear()
             for _k in list(st.session_state.keys()):
                 del st.session_state[_k]
             st.rerun()

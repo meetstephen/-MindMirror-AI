@@ -166,6 +166,20 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    # Clean up expired session tokens
+    c.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
+
     conn.commit()
     conn.close()
 
@@ -750,3 +764,41 @@ def count_recent_login_attempts(username: str, minutes: int = 15) -> int:
     ).fetchone()
     conn.close()
     return row["cnt"] if row else 0
+
+
+# ───────────────────────────────────────────────────────────────────
+#  Session Tokens (Remember Me persistence)
+# ───────────────────────────────────────────────────────────────────
+
+def create_session_token(user_id: int) -> str:
+    """Generate a secure session token, store it with 7-day expiry, return the token."""
+    token = secrets.token_urlsafe(32)
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+7 days'))",
+        (user_id, token),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def verify_session_token(token: str) -> Optional[int]:
+    """Look up a session token. Returns user_id if valid and not expired, None otherwise."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT user_id FROM sessions WHERE token = ? AND expires_at > datetime('now')",
+        (token,),
+    ).fetchone()
+    conn.close()
+    if row:
+        return row["user_id"]
+    return None
+
+
+def delete_session_token(token: str) -> None:
+    """Remove a session token (e.g. on logout)."""
+    conn = _connect()
+    conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
