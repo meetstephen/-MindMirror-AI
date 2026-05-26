@@ -1,5 +1,8 @@
-# Secrets — NEVER commit API keys
+# Secrets -- NEVER commit API keys
 .streamlit/secrets.toml
+
+# Agent task tracking
+.agents/
 
 # Database — user data stays local
 mindmirror.db

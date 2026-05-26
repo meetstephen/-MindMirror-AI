@@ -4,69 +4,112 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![SQLite](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white)](#)
 
-# 🧠 MindMirror AI v2.0
+# MindMirror AI v3.0
 
-**AI-powered personal behavioral analyst and journaling companion.**
+**Your AI companion for self-discovery, emotional growth, and everyday mental wellness.**
 
-MindMirror AI combines local sentiment analysis with Google Gemini-powered deep pattern recognition to help you decode your emotional cycles, cognitive patterns, behavioral triggers, and personal growth — in a Streamlit-powered deployment built for **self-discovery and mental wellness**.
+MindMirror AI is a warm, human-sounding journaling companion that helps you understand your emotional patterns, build resilience, and grow at your own pace. Powered by Google Gemini and built with Streamlit, it combines structured therapeutic tools with gentle AI guidance -- never robotic, never clinical, always on your side.
 
 <p align="center">
   <a href="https://mindmirror-ai.streamlit.app">
-    <img src="https://img.shields.io/badge/🚀%20Launch%20App-MindMirror%20AI%20Live-059669?style=for-the-badge&logoColor=white" alt="Launch MindMirror AI">
+    <img src="https://img.shields.io/badge/Launch%20App-MindMirror%20AI%20Live-059669?style=for-the-badge&logoColor=white" alt="Launch MindMirror AI">
   </a>
 </p>
 
 <p align="center">
-  👉 <strong><a href="https://mindmirror-ai.streamlit.app">https://mindmirror-ai.streamlit.app</a></strong>
+  <a href="https://mindmirror-ai.streamlit.app">https://mindmirror-ai.streamlit.app</a>
 </p>
 
 ---
 
 ## Features
 
-- **AI Journal** — write daily entries, batch import past notes, auto-tagging, and sentiment scoring on every save
-- **Local Pattern Analysis** — emotion detection, topic extraction, word frequency, entity recognition, and sentiment timelines without any API calls
-- **AI Deep Analysis** — Gemini-powered behavioral report with cognitive patterns, emotional loops, triggers, predictions, and personalised recommendations (up to 8,192 tokens)
-- **AI Insight Chat** — warm therapeutic conversations with multi-turn memory, journal context awareness, and multiple saved sessions (up to 4,096 tokens per reply)
-- **Preset Chat Sessions** — Morning Check-in, Evening Reflection, Deep Dive, Goal Setting, Mood Check, plus custom-named sessions
-- **Insight Dashboard** — mood timelines, emotion distribution, topic breakdown, word frequency charts, people mentions, journaling streaks, and mood calendar heatmap
-- **AI Reflection Prompts** — personalised journaling prompts generated from your recent entries
-- **SQLite Persistence** — journal entries, analyses, chat history, and user profiles survive browser refreshes, app restarts, and redeployments
-- **Auto-login** — username persists in URL parameters so refreshing never loses your session
-- **Export** — download journal entries and analyses as JSON or TXT
-- **7 Themes** — Deep Ocean · Sakura · Forest · Cosmic Purple · Sunrise · Midnight · Clean Light
+### Secure Authentication
+
+- Password-based registration and login (hashed credentials, no plaintext)
+- Brute-force protection (lockout after 5 failed attempts in 15 minutes)
+- No URL parameter login -- sessions stay in secure server-side state
+
+### Personalized Onboarding
+
+- 4-step onboarding wizard when you first sign up
+- Choose your core values, preferred support style, emotional landscape, and privacy comfort level
+- The AI remembers your preferences and adapts its tone accordingly
+
+### Journaling
+
+- **5 journal templates**: Freeform, Thought Record (CBT), Gratitude, Evening Review, Body Check-In
+- **Live cognitive distortion detection** as you write -- gentle highlights, not judgments
+- **Batch import** with automatic tagging for bringing in past notes
+- Sentiment scoring and emotion tagging on every save
+
+### AI Deep Analysis
+
+- 9-section behavioral report covering patterns, triggers, cognitive loops, emotional trajectories, and personalized recommendations
+- Context-aware -- draws from your journal history, goals, and check-in data
+
+### AI Chat
+
+- **5 therapeutic modes**: Open, CBT, Validation, Reflection, Check-in
+- **Empathy level control** (1-10) so you set how warm or direct the AI sounds
+- **Crisis detection** -- if you share something urgent, MindMirror surfaces crisis resources immediately
+- Multi-turn memory with full journal and analysis context
+
+### Dashboard & Insights
+
+- Mood and energy timeline charts
+- Emotional fingerprint radar showing your dominant patterns
+- Growth radar tracking progress across dimensions
+- **Daily emoji check-in** for quick mood snapshots
+- **Goal tracking** with visual progress indicators
+- **PHQ-9 and GAD-7** structured mental health check-ins
+- **AI mood forecast** and narrative summaries of your week
+
+### Skills & Growth
+
+- **4 skill module categories**: Mindfulness, Distress Tolerance, Self-Compassion, Cognitive Skills
+- **4 reflection journeys**: Heartbreak Recovery, Motivation Building, Anxiety Management, Self-Worth
+- Quick grounding tools and guided breathing exercises
+- Contextual skill recommendations based on your recent entries
+
+### Personalization & Accessibility
+
+- **7 visual themes** with adaptive mood tinting (Deep Ocean, Sakura, Forest, Cosmic Purple, Sunrise, Midnight, Clean Light)
+- Font scaling for comfortable reading
+- High contrast mode
+- Reduce motion option for vestibular sensitivity
+
+### Data & Privacy
+
+- **Full data export** in JSON and CSV formats
+- **Backup and restore** your entire account
+- Rate limiting (20 AI calls per 10 minutes) to prevent abuse
+- Input sanitization (XSS prevention) on all user-submitted text
+- All data stored locally in SQLite -- nothing shared beyond Gemini API calls
+
+---
 
 ## Navigation
 
-The app is organised into 6 top-level pages:
+The app is organized into 7 top-level pages:
 
 | Page | Purpose |
 |---|---|
-| 📝 Journal | Write entries, batch import, browse and delete past entries |
-| 🔬 Analysis | Local pattern detection + AI deep behavioral analysis |
-| 💬 AI Chat | Therapeutic conversations with session management |
-| 📊 Dashboard | Mood timelines, emotion charts, streaks, word clouds, mood calendar |
-| 📂 History | Browse saved analyses, chat transcripts, and export data |
-| ⚙️ Settings | API key status, account stats, theme info, danger zone |
+| Journal | Write entries using 5 templates, batch import, browse and manage past entries |
+| Analysis | Local pattern detection + AI deep 9-section behavioral analysis |
+| AI Chat | Therapeutic conversations with 5 modes, empathy control, and crisis detection |
+| Dashboard | Mood timelines, emotional fingerprint, growth radar, check-ins, goals, PHQ-9/GAD-7 |
+| Skills & Growth | Skill modules, reflection journeys, grounding tools, breathing guide |
+| History | Browse saved analyses, chat transcripts, and export data |
+| Settings | API key status, theme selection, accessibility options, backup/restore, danger zone |
 
-## AI Models
-
-| Model | ID |
-|---|---|
-| Gemini 2.5 Flash | `gemini-2.5-flash` |
-| Gemini 2.5 Flash Lite | `gemini-2.5-flash-lite` |
-| Gemini 2.0 Flash | `gemini-2.0-flash` |
-| Gemini 2.0 Flash Lite | `gemini-2.0-flash-lite` |
-| Gemini 1.5 Flash | `gemini-1.5-flash` |
-| Gemini 1.5 Pro | `gemini-1.5-pro` |
-
-Models are selectable from the sidebar. Default is `gemini-2.5-flash`.
+---
 
 ## Quick Start
 
 ### Try it now
 
-Visit **[mindmirror-ai.streamlit.app](https://mindmirror-ai.streamlit.app)** — no installation needed.
+Visit **[mindmirror-ai.streamlit.app](https://mindmirror-ai.streamlit.app)** -- no installation needed. Create an account with a username and password to get started.
 
 ### Run locally
 
@@ -88,108 +131,71 @@ EOF
 streamlit run app.py
 ```
 
-Alternatively, get your free API key at [Google AI Studio](https://aistudio.google.com/app/apikey) and set it in the Streamlit Cloud Secrets dashboard.
+On first launch, register with a username and password (minimum 6 characters). The onboarding wizard will guide you through personalizing your experience.
 
-## Configuration
+Get your free API key at [Google AI Studio](https://aistudio.google.com/app/apikey), or set it in **Settings > Secrets** on the Streamlit Cloud dashboard.
 
-All options go in `.streamlit/secrets.toml`:
+---
 
-| Key | Required | Description |
-|---|---|---|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
+## Privacy & Security
 
-### Example
+- Passwords are hashed before storage -- never stored in plaintext
+- No URL parameters carry authentication state
+- Journal text is only sent to Google Gemini when you explicitly use AI features (Deep Analysis, AI Chat, mood forecast)
+- All user inputs are sanitized to prevent XSS
+- Rate limiting protects against API abuse
+- No tracking, no analytics, no cookies, no third-party data sharing
+- Full data export and account deletion available in Settings
 
-```toml
-GEMINI_API_KEY = "AIzaSy-your-key-here"
-```
-
-## Analysis Modes
-
-| Mode | Description | Token Limit |
-|---|---|---|
-| 📊 Local Analysis | Sentiment, emotions, topics, entities, word frequency — no API needed | Instant |
-| 🤖 AI Deep Analysis | Full behavioral report with patterns, predictions, triggers, and recommendations | 8,192 |
-
-## AI Capabilities
-
-| Capability | Description |
-|---|---|
-| 🔍 Pattern Detection | Recurring emotional and behavioral cycles |
-| 🧠 Cognitive Analysis | All-or-nothing thinking, catastrophising, filtering, emotional reasoning |
-| ⏳ Predictions | Pattern-based forecasting of emotional trajectories |
-| ⚠️ Trigger Mapping | Specific triggers linked to emotional effects |
-| 💬 Therapeutic Chat | Warm, validating conversations with gentle pattern surfacing |
-| 💡 Reflection Prompts | Personalised journaling suggestions based on recent entries |
-| 🔄 Behavioral Loops | Trigger → thought → feeling → action → consequence mapping |
-
-## Data Persistence
-
-MindMirror stores all application data in a local SQLite database:
-
-```text
-mindmirror.db
-```
-
-Stored data includes:
-
-- Journal entries with sentiment scores, emotions, and tags
-- AI and local analysis reports
-- Full chat history across multiple named sessions
-- User profiles
-
-Data survives browser refreshes, app restarts, and redeployments **as long as the SQLite database file is preserved**. Auto-login via URL parameters ensures your session persists through page refreshes.
-
-## Privacy
-
-- All journal data is stored locally in SQLite
-- Journal text is only sent to Google Gemini when you explicitly run **AI Deep Analysis** or use **AI Chat**
-- No data is shared with third parties beyond Gemini API calls
-- No tracking, no analytics, no cookies
+---
 
 ## Tech Stack
 
 | Core | Libraries |
 |---|---|
-| Python 3.11 | Plotly *(charts & visualisation)* |
+| Python 3.11 | Plotly *(charts & visualization)* |
 | Streamlit | Pandas *(data processing)* |
-| Google Gemini API | google-generativeai *(Gemini SDK)* |
-| SQLite | — |
+| Google Gemini API | NumPy *(numerical operations)* |
+| SQLite | google-generativeai *(Gemini SDK)* |
+
+---
 
 ## Project Structure
 
 ```text
 .
 ├── .streamlit/
+│   ├── config.toml             # Server and theme configuration
 │   └── secrets.toml            # API key (not committed)
 ├── .gitignore                  # Git ignore rules
-├── app.py                      # Main Streamlit app (UI, routing, pages)
-├── analyzer.py                 # Sentiment analysis, Gemini AI calls
-├── database.py                 # SQLite persistence layer
+├── app.py                      # Main Streamlit app (UI, routing, all pages)
+├── analyzer.py                 # NLP, sentiment analysis, Gemini AI calls
+├── database.py                 # SQLite persistence, auth, rate limiting
 ├── themes.py                   # 7 visual themes with CSS + Plotly colors
+├── backup.py                   # Data export, import, backup and restore
 ├── requirements.txt            # Python dependencies
+├── CHANGELOG.md                # Version history
 ├── mindmirror.db               # SQLite database (auto-created at runtime)
 └── README.md                   # This file
 ```
 
+---
+
 ## Deployment Notes
 
-- The app is designed for **Streamlit Cloud** and local deployment
-- On first deployment, startup may take longer due to dependency installation and database initialisation
-- Subsequent loads are typically much faster
-- If hosted on free Streamlit infrastructure, occasional cold-start delays are normal after inactivity
-- Set your Gemini API key in **Settings → Secrets** on the Streamlit Cloud dashboard
+- Designed for **Streamlit Cloud** and local deployment
+- On first deployment, startup may take longer due to dependency installation and database initialization
+- Set your Gemini API key in **Settings > Secrets** on the Streamlit Cloud dashboard
+- The app runs without an API key for local-only features (journaling, dashboard, skills)
 
-## Who This Is For
-
-Anyone interested in self-awareness, emotional intelligence, and personal growth — journalers, therapy clients, mindfulness practitioners, students, professionals managing stress, or anyone who wants to understand their own patterns better through the lens of AI-assisted behavioral analysis.
+---
 
 ## Disclaimer
 
-MindMirror AI provides **AI-generated psychological insights** for self-reflection and personal growth support. It does **not** constitute professional mental health advice, therapy, or diagnosis. If you are experiencing a mental health crisis, please contact a licensed professional or emergency services in your area. All AI-generated patterns, predictions, and recommendations should be considered as reflective tools, not clinical assessments.
+MindMirror AI is a **self-reflection and personal growth tool**. It is not a substitute for professional mental health care, therapy, or diagnosis. If you are experiencing a mental health crisis, please contact a licensed professional or emergency services in your area. The AI-generated insights, patterns, and suggestions are reflective tools to support your journey -- not clinical assessments.
 
 ---
 
 <p align="center">
-  <strong>MindMirror AI v2.0</strong> · Decode your mind · <a href="https://mindmirror-ai.streamlit.app">Try it live</a> · <a href="https://ai.google.dev">Powered by Google Gemini</a>
+  <strong>MindMirror AI v3.0</strong> -- Understand yourself, one entry at a time -- <a href="https://mindmirror-ai.streamlit.app">Try it live</a>
 </p>
