@@ -25,6 +25,9 @@ import numpy as np
 from database import (
     init_db,
     get_or_create_user,
+    create_user,
+    verify_user,
+    user_exists,
     save_entry,
     get_entries,
     delete_entry,
@@ -162,6 +165,50 @@ for _k, _v in _DEFAULTS.items():
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  SECTION 3B — SECURITY HELPERS (sanitization, rate limiting)
+# ═══════════════════════════════════════════════════════════════════
+
+def _sanitize_input(text: str) -> str:
+    """Strip dangerous HTML tags and event handler attributes from user input.
+    Preserves normal text content while removing script/iframe injections."""
+    if not text:
+        return text
+    # Remove <script>...</script> blocks
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    # Remove <iframe>...</iframe> blocks
+    text = re.sub(r"<iframe[^>]*>.*?</iframe>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    # Remove standalone <script> or <iframe> tags (unclosed)
+    text = re.sub(r"</?script[^>]*>", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"</?iframe[^>]*>", "", text, flags=re.IGNORECASE)
+    # Remove event handler attributes (on*)
+    text = re.sub(r"\bon\w+\s*=\s*[\"'][^\"']*[\"']", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bon\w+\s*=\s*\S+", "", text, flags=re.IGNORECASE)
+    return text.strip()
+
+
+def _check_rate_limit() -> bool:
+    """Check if the user is within the AI call rate limit.
+    Allows 20 AI calls per 10 minutes. Returns True if allowed."""
+    if "_ai_call_times" not in st.session_state:
+        st.session_state["_ai_call_times"] = []
+
+    now = datetime.now()
+    window = timedelta(minutes=10)
+
+    # Prune timestamps older than the window
+    st.session_state["_ai_call_times"] = [
+        t for t in st.session_state["_ai_call_times"]
+        if now - t < window
+    ]
+
+    if len(st.session_state["_ai_call_times"]) >= 20:
+        return False
+
+    st.session_state["_ai_call_times"].append(now)
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  SECTION 4 — API KEY · DATABASE · AUTO-LOGIN · PROFILE LOAD
 # ═══════════════════════════════════════════════════════════════════
 
@@ -176,15 +223,7 @@ except (KeyError, FileNotFoundError, AttributeError):
 # ── Initialise database (idempotent — safe to run on every load) ─
 init_db()
 
-# ── Auto-login from URL ?user=... so refresh doesn't log out ────
-if not st.session_state.logged_in:
-    _params = st.query_params
-    if "user" in _params:
-        _uname = _params["user"]
-        if isinstance(_uname, str) and _uname.strip():
-            st.session_state.username = _uname.strip()
-            st.session_state.user_id = get_or_create_user(_uname.strip())
-            st.session_state.logged_in = True
+# ── Auto-login removed for security (URL params no longer grant access) ──
 
 # ── Load psyche profile from DB (once per session) ──────────────
 if (
@@ -419,30 +458,83 @@ def render_sidebar():
         st.markdown("---")
 
         # ────────────────────────────────────────────────────────
-        #  NOT LOGGED IN → show login form
+        #  NOT LOGGED IN → show login / register form
         # ────────────────────────────────────────────────────────
         if not st.session_state.logged_in:
             st.markdown("#### 👤 Get Started")
-            uname = st.text_input(
-                "Your name:",
-                key="_login_name",
-                placeholder="e.g. Alex",
-            )
-            if st.button(
-                "🚀 Enter MindMirror",
-                use_container_width=True,
-                type="primary",
-            ):
-                if uname.strip():
-                    st.session_state.username = uname.strip()
-                    st.session_state.user_id = get_or_create_user(
-                        uname.strip()
-                    )
-                    st.session_state.logged_in = True
-                    st.query_params["user"] = uname.strip()
-                    st.rerun()
-                else:
-                    st.warning("Please type a name.")
+            login_tab, register_tab = st.tabs(["Login", "Register"])
+
+            with login_tab:
+                login_user = st.text_input(
+                    "Username:",
+                    key="_login_username",
+                    placeholder="Your username",
+                )
+                login_pass = st.text_input(
+                    "Password:",
+                    type="password",
+                    key="_login_password",
+                    placeholder="Your password",
+                )
+                if st.button(
+                    "🔑 Login",
+                    use_container_width=True,
+                    type="primary",
+                    key="_login_btn",
+                ):
+                    _clean_user = _sanitize_input(login_user.strip())
+                    if _clean_user and login_pass:
+                        uid = verify_user(_clean_user, login_pass)
+                        if uid is not None:
+                            st.session_state.username = _clean_user
+                            st.session_state.user_id = uid
+                            st.session_state.logged_in = True
+                            st.rerun()
+                        else:
+                            st.error("Invalid username or password.")
+                    else:
+                        st.warning("Please enter both username and password.")
+
+            with register_tab:
+                reg_user = st.text_input(
+                    "Choose username:",
+                    key="_reg_username",
+                    placeholder="e.g. Alex",
+                )
+                reg_pass = st.text_input(
+                    "Choose password:",
+                    type="password",
+                    key="_reg_password",
+                    placeholder="Min 6 characters",
+                )
+                reg_pass2 = st.text_input(
+                    "Confirm password:",
+                    type="password",
+                    key="_reg_password2",
+                    placeholder="Repeat password",
+                )
+                if st.button(
+                    "🚀 Register",
+                    use_container_width=True,
+                    type="primary",
+                    key="_reg_btn",
+                ):
+                    _clean_reg = _sanitize_input(reg_user.strip())
+                    if not _clean_reg:
+                        st.warning("Please choose a username.")
+                    elif len(reg_pass) < 6:
+                        st.warning("Password must be at least 6 characters.")
+                    elif reg_pass != reg_pass2:
+                        st.error("Passwords do not match.")
+                    elif user_exists(_clean_reg):
+                        st.error("Username already taken. Please choose another.")
+                    else:
+                        uid = create_user(_clean_reg, reg_pass)
+                        st.session_state.username = _clean_reg
+                        st.session_state.user_id = uid
+                        st.session_state.logged_in = True
+                        st.rerun()
+
             return  # nothing else to show when logged out
 
         # ────────────────────────────────────────────────────────
@@ -708,7 +800,6 @@ def render_sidebar():
 
         # ── Logout ───────────────────────────────────────────────
         if st.button("🚪 Logout", use_container_width=True):
-            st.query_params.clear()
             for _k in list(st.session_state.keys()):
                 del st.session_state[_k]
             st.rerun()
@@ -1223,6 +1314,7 @@ def page_journal():
         full_content = "\n\n".join(
             p for p in content_parts if p and p.strip()
         )
+        full_content = _sanitize_input(full_content)
 
         st.markdown("---")
 
@@ -1434,6 +1526,9 @@ def page_journal():
 
                         if not text:
                             continue
+
+                        # Sanitize imported content
+                        text = _sanitize_input(text)
 
                         # Auto-analyse
                         sent = sentiment_score(text)
@@ -2121,6 +2216,14 @@ def page_analysis():
         if not show_consent_notice(CONSENT_NOTICE_ANALYSIS):
             return
 
+        # Rate limit check
+        if not _check_rate_limit():
+            st.warning(
+                "Take a breather - you have hit the limit for AI requests. "
+                "Try again in a few minutes."
+            )
+            return
+
         with st.spinner("🧠 MindMirror is reading between the lines…"):
             profile = get_psyche_profile(uid)
             result = ai_analysis(
@@ -2147,16 +2250,22 @@ def page_analysis():
                 use_container_width=True,
                 key="_an_prompts",
             ):
-                with st.spinner("Crafting prompts…"):
-                    prompts = ai_reflection_prompts(
-                        all_entries,
-                        st.session_state.api_key,
-                        st.session_state.model,
-                        goals=get_goals(uid),
-                        psyche_profile=get_psyche_profile(uid),
+                if not _check_rate_limit():
+                    st.warning(
+                        "Take a breather - you have hit the limit for AI requests. "
+                        "Try again in a few minutes."
                     )
-                st.markdown("### 💡 Personalised Reflection Prompts")
-                st.markdown(prompts)
+                else:
+                    with st.spinner("Crafting prompts…"):
+                        prompts = ai_reflection_prompts(
+                            all_entries,
+                            st.session_state.api_key,
+                            st.session_state.model,
+                            goals=get_goals(uid),
+                            psyche_profile=get_psyche_profile(uid),
+                        )
+                    st.markdown("### 💡 Personalised Reflection Prompts")
+                    st.markdown(prompts)
 
         with pa2:
             if st.button(
@@ -2164,15 +2273,21 @@ def page_analysis():
                 use_container_width=True,
                 key="_an_forecast",
             ):
-                with st.spinner("Forecasting…"):
-                    forecast = ai_mood_forecast(
-                        all_entries,
-                        la,
-                        st.session_state.api_key,
-                        st.session_state.model,
+                if not _check_rate_limit():
+                    st.warning(
+                        "Take a breather - you have hit the limit for AI requests. "
+                        "Try again in a few minutes."
                     )
-                st.markdown("### 🔮 Emotional Weather Forecast")
-                st.markdown(forecast)
+                else:
+                    with st.spinner("Forecasting…"):
+                        forecast = ai_mood_forecast(
+                            all_entries,
+                            la,
+                            st.session_state.api_key,
+                            st.session_state.model,
+                        )
+                    st.markdown("### 🔮 Emotional Weather Forecast")
+                    st.markdown(forecast)
 
         with pa3:
             if distortions:
@@ -2181,15 +2296,21 @@ def page_analysis():
                     use_container_width=True,
                     key="_an_distdive",
                 ):
-                    with st.spinner("Analysing thinking patterns…"):
-                        dist_result = ai_distortion_analysis(
-                            target,
-                            distortions,
-                            st.session_state.api_key,
-                            st.session_state.model,
+                    if not _check_rate_limit():
+                        st.warning(
+                            "Take a breather - you have hit the limit for AI requests. "
+                            "Try again in a few minutes."
                         )
-                    st.markdown("### 🌀 Cognitive Distortion Analysis")
-                    st.markdown(dist_result)
+                    else:
+                        with st.spinner("Analysing thinking patterns…"):
+                            dist_result = ai_distortion_analysis(
+                                target,
+                                distortions,
+                                st.session_state.api_key,
+                                st.session_state.model,
+                            )
+                        st.markdown("### 🌀 Cognitive Distortion Analysis")
+                        st.markdown(dist_result)
             else:
                 st.button(
                     "🌀 No distortions found",
@@ -2390,29 +2511,36 @@ def page_chat():
 
     # ── Session summary ──────────────────────────────────────────
     if want_summary and db_msgs:
-        with st.spinner("Generating session summary…"):
-            summary = generate_session_summary(
-                db_msgs,
-                st.session_state.api_key,
-                st.session_state.model,
+        if not _check_rate_limit():
+            st.warning(
+                "Take a breather - you have hit the limit for AI requests. "
+                "Try again in a few minutes."
             )
-        st.markdown("---")
-        st.markdown("### 📋 Session Summary")
-        st.markdown(summary)
+        else:
+            with st.spinner("Generating session summary…"):
+                summary = generate_session_summary(
+                    db_msgs,
+                    st.session_state.api_key,
+                    st.session_state.model,
+                )
+            st.markdown("---")
+            st.markdown("### 📋 Session Summary")
+            st.markdown(summary)
 
-        # Save summary as a message in the session
-        save_chat_msg(
-            uid,
-            "assistant",
-            f"**📋 Session Summary**\n\n{summary}",
-            st.session_state.chat_session,
-        )
-        st.rerun()
+            # Save summary as a message in the session
+            save_chat_msg(
+                uid,
+                "assistant",
+                f"**📋 Session Summary**\n\n{summary}",
+                st.session_state.chat_session,
+            )
+            st.rerun()
     elif want_summary and not db_msgs:
         st.info("No messages to summarise yet.")
 
     # ── Chat input ───────────────────────────────────────────────
     if prompt := st.chat_input("Tell me what's on your mind…"):
+        prompt = _sanitize_input(prompt)
 
         # ── Crisis detection ─────────────────────────────────────
         is_crisis = detect_crisis(prompt)
@@ -2440,26 +2568,32 @@ def page_chat():
 
         # Call AI
         with st.chat_message("assistant"):
-            with st.spinner("Reflecting…"):
-                reply = ai_chat(
-                    prompt,
-                    entries if entries else [],
-                    history,
-                    st.session_state.api_key,
-                    st.session_state.model,
-                    chat_mode=active_mode,
-                    empathy_level=(
-                        0.9 if is_crisis  # max empathy in crisis
-                        else active_empathy
-                    ),
-                    psyche_profile=get_psyche_profile(uid),
+            if not _check_rate_limit():
+                st.warning(
+                    "Take a breather - you have hit the limit for AI requests. "
+                    "Try again in a few minutes."
                 )
-            st.markdown(reply)
+            else:
+                with st.spinner("Reflecting…"):
+                    reply = ai_chat(
+                        prompt,
+                        entries if entries else [],
+                        history,
+                        st.session_state.api_key,
+                        st.session_state.model,
+                        chat_mode=active_mode,
+                        empathy_level=(
+                            0.9 if is_crisis  # max empathy in crisis
+                            else active_empathy
+                        ),
+                        psyche_profile=get_psyche_profile(uid),
+                    )
+                st.markdown(reply)
 
-        save_chat_msg(
-            uid, "assistant", reply,
-            st.session_state.chat_session,
-        )
+                save_chat_msg(
+                    uid, "assistant", reply,
+                    st.session_state.chat_session,
+                )
 
     # ── Context panel ────────────────────────────────────────────
     with st.expander("📊 Your Recent Context (visible to AI)", expanded=False):
@@ -4418,12 +4552,10 @@ def page_settings():
         )
 
         current_key = st.session_state.api_key
-        masked = (
-            f"{current_key[:8]}…{current_key[-4:]}"
-            if current_key and len(current_key) > 12
-            else ("(set)" if current_key else "(not set)")
-        )
-        st.caption(f"Current key: `{masked}`")
+        if current_key:
+            st.caption("Current key: `Key is set`")
+        else:
+            st.caption("Current key: `No key configured`")
 
         new_key = st.text_input(
             "Enter or update API key:",
