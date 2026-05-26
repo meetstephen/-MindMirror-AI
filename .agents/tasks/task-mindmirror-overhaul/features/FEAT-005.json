@@ -2,7 +2,7 @@
   "id": "FEAT-005",
   "type": "fix",
   "description": "Fix all 7 issues identified in the code review: persistent rate limiting, login brute-force protection, complete XSS sanitization, analysis context wiring to chat, streak anchor to today, UTC/local check-in mismatch, and functional retry button.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Issue 1: Move rate limiting to database. Add rate_limits table. Add record_ai_call and count_recent_ai_calls to database.py. Update _check_rate_limit in app.py to use database.",
     "Issue 2: Add login_attempts table. Add record_login_attempt and count_recent_login_attempts to database.py. Add brute-force check in app.py login logic.",
@@ -27,5 +27,5 @@
     "python -m py_compile database.py"
   ],
   "blocked_reason": null,
-  "findings": null
+  "findings": "All 7 review issues fixed and verified. py_compile passes for all 3 files. Database functions tested (rate_limits, login_attempts tables created). Streak logic verified with 5 test cases including broken streak and grace period scenarios. Sanitization tested against img/svg/iframe/script/javascript: vectors. ai_chat signature confirmed to include recent_analysis_summary parameter."
 }
