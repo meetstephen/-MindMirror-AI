@@ -454,14 +454,14 @@ def format_mode_label(mode_key: str) -> str:
 def render_sidebar():
     with st.sidebar:
         st.markdown("## 🧠 MindMirror AI")
-        st.caption("*Decode your mind. Discover your patterns.*")
+        st.caption("*Your journal, your patterns, your growth.*")
         st.markdown("---")
 
         # ────────────────────────────────────────────────────────
         #  NOT LOGGED IN → show login / register form
         # ────────────────────────────────────────────────────────
         if not st.session_state.logged_in:
-            st.markdown("#### 👤 Get Started")
+            st.markdown("#### 👤 Jump In")
             login_tab, register_tab = st.tabs(["Login", "Register"])
 
             with login_tab:
@@ -491,9 +491,9 @@ def render_sidebar():
                             st.session_state.logged_in = True
                             st.rerun()
                         else:
-                            st.error("Invalid username or password.")
+                            st.error("Wrong username or password. Try again.")
                     else:
-                        st.warning("Please enter both username and password.")
+                        st.warning("Need both a username and password.")
 
             with register_tab:
                 reg_user = st.text_input(
@@ -521,13 +521,13 @@ def render_sidebar():
                 ):
                     _clean_reg = _sanitize_input(reg_user.strip())
                     if not _clean_reg:
-                        st.warning("Please choose a username.")
+                        st.warning("Pick a username so we know what to call you.")
                     elif len(reg_pass) < 6:
-                        st.warning("Password must be at least 6 characters.")
+                        st.warning("Make it at least 6 characters.")
                     elif reg_pass != reg_pass2:
-                        st.error("Passwords do not match.")
+                        st.error("Those passwords don't match.")
                     elif user_exists(_clean_reg):
-                        st.error("Username already taken. Please choose another.")
+                        st.error("That name's taken. Try another.")
                     else:
                         uid = create_user(_clean_reg, reg_pass)
                         st.session_state.username = _clean_reg
@@ -570,7 +570,7 @@ def render_sidebar():
         # ── Quick Mood Pulse ─────────────────────────────────────
         with st.expander("🌡️ Quick Mood Pulse", expanded=False):
             st.caption(
-                "Rate how you feel right now (0 = not at all, 3 = nearly every day)."
+                "How are you feeling right now? (0 = not at all, 3 = a lot)"
             )
             p_c1, p_c2 = st.columns(2)
             with p_c1:
@@ -917,8 +917,8 @@ def page_onboarding():
 
     st.markdown("# 🌟 Welcome to MindMirror AI")
     st.markdown(
-        "Let's personalise your experience — this takes about "
-        "**2 minutes** and makes everything smarter."
+        "Let's get things set up for you. Takes about "
+        "**2 minutes** and makes everything work better."
     )
     st.progress((step - 1) / 4)
     st.caption(f"Step {step} of 4")
@@ -927,7 +927,7 @@ def page_onboarding():
     # ── Step 1: Core Values ──────────────────────────────────────
     if step == 1:
         st.markdown("### 1️⃣ What matters most to you right now?")
-        st.caption("Pick up to 3 core values. These shape the insights MindMirror offers.")
+        st.caption("Pick up to 3. These shape what MindMirror pays attention to.")
 
         all_values = [
             "Growth", "Connection", "Autonomy", "Security",
@@ -956,8 +956,8 @@ def page_onboarding():
     elif step == 2:
         st.markdown("### 2️⃣ How should MindMirror talk to you?")
         st.caption(
-            "Everyone processes differently. Choose the style "
-            "that feels right — you can change this anytime."
+            "Everyone's different. Pick what feels right - "
+            "you can always change it later."
         )
 
         style = st.select_slider(
@@ -1012,7 +1012,7 @@ def page_onboarding():
         st.caption(
             "MindMirror comes with standard emotions, but you might use "
             "words like *'overwhelmed'*, *'flow'*, or *'meh'*. "
-            "Add your own so the app speaks **your** language."
+            "Add your own so it speaks **your** language."
         ) 
             
             
@@ -1076,12 +1076,11 @@ def page_onboarding():
         st.markdown("### 4️⃣ Privacy & data controls")
 
         st.info(
-            "📦 **All your journal entries, chats, and analyses are stored "
-            "locally** in a SQLite database on the server. Nothing is shared "
-            "with third parties.\n\n"
-            "🤖 **AI features** (Analysis, Chat) send your selected text to "
-            "Google Gemini **only when you click the button**. Gemini does not "
-            "retain your data after the request."
+            "📦 **Your journal lives locally** in a database on the server. "
+            "Nothing is shared with anyone.\n\n"
+            "🤖 **AI stuff** (Analysis, Chat) sends your text to Google Gemini "
+            "**only when you click the button**. Gemini doesn't keep your data "
+            "after that."
         )
 
         consent = st.checkbox(
@@ -1393,7 +1392,7 @@ def page_journal():
             key="_j_save",
         ):
             if not full_content.strip():
-                st.warning("Write something first.")
+                st.warning("Nothing here yet - what's on your mind?")
             else:
                 dt_str = datetime.combine(
                     entry_date, entry_time
@@ -1502,7 +1501,7 @@ def page_journal():
                 ]
 
                 if not chunks:
-                    st.warning("No entries found. Separate with `---`.")
+                    st.warning("Couldn't find entries. Separate them with `---`.")
                 else:
                     progress = st.progress(0)
                     imported = 0
@@ -1568,7 +1567,7 @@ def page_journal():
         all_entries = get_entries(uid, limit=200)
 
         if not all_entries:
-            st.info("No entries yet. Start journaling! ✍️")
+            st.info("No entries yet. What's on your mind? ✍️")
             return
 
         # ── Filters ──────────────────────────────────────────────
@@ -1746,8 +1745,8 @@ def page_journal():
 def page_analysis():
     st.markdown("# 🔬 Pattern Analysis")
     st.markdown(
-        "Uncover cognitive distortions, growth trajectories, emotional "
-        "networks, mood triggers, and more — all from your journal."
+        "Let's look at what your writing reveals - thinking habits, "
+        "mood patterns, triggers, and how you've been growing."
     )
     st.markdown("---")
 
@@ -1756,8 +1755,8 @@ def page_analysis():
 
     if len(all_entries) < 2:
         st.warning(
-            "Write at least **2 journal entries** before running "
-            "an analysis. The more data, the richer the insights."
+            "Need at least **2 journal entries** to find patterns. "
+            "The more you write, the more there is to see."
         )
         return
 
@@ -2328,10 +2327,9 @@ def page_analysis():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_chat():
-    st.markdown("# 💬 AI Insight Chat")
+    st.markdown("# 💬 Talk It Out")
     st.markdown(
-        "Talk with MindMirror about your patterns, feelings, "
-        "and what's on your mind. Choose your therapeutic mode "
+        "Chat about what's on your mind. Pick a mode "
         "and adjust the empathy level in the sidebar."
     )
     st.markdown("---")
@@ -2341,19 +2339,19 @@ def page_chat():
     # ── Gate checks ──────────────────────────────────────────────
     if not st.session_state.api_key:
         st.warning(
-            "⚠️ Gemini API key not found. Add `GEMINI_API_KEY` "
-            "to your Streamlit Secrets (see ⚙️ Settings)."
+            "⚠️ No Gemini API key yet. Add `GEMINI_API_KEY` "
+            "in ⚙️ Settings to use chat."
         )
         return
 
     if st.session_state.privacy_mode == "local_only":
-        st.warning("🔒 AI Chat is disabled in **Local-only** mode.")
-        st.caption("Change this in ⚙️ Settings → Privacy.")
+        st.warning("🔒 Chat is off in **Local-only** mode.")
+        st.caption("You can change this in ⚙️ Settings.")
         return
 
     if not st.session_state.consent_ai_processing:
         st.warning(
-            "🔒 AI consent is revoked. Enable it in "
+            "🔒 AI consent is off. Turn it on in "
             "⚙️ Settings to use Chat."
         )
         return
@@ -2716,8 +2714,9 @@ def page_dashboard():
 
     if not entries:
         st.info(
-            "Your dashboard will come alive once you start journaling. "
-            "Head to **📝 Journal** and write your first entry! ✨"
+            "Nothing here yet. Once you start writing, "
+            "this is where your patterns show up. "
+            "Head to **📝 Journal** to begin."
         )
         return
 
@@ -3550,10 +3549,10 @@ def page_dashboard():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_skills():
-    st.markdown("# 🧘 Skills & Growth")
+    st.markdown("# 🧘 Tools That Actually Help")
     st.markdown(
-        "Evidence-based exercises, guided reflection journeys, "
-        "and quick grounding tools — all in one place."
+        "Exercises, guided reflections, and quick grounding tools - "
+        "all in one place."
     )
     st.markdown("---")
 
@@ -3570,9 +3569,8 @@ def page_skills():
     # ═════════════════════════════════════════════════════════════
     with tab_modules:
         st.markdown(
-            "Browse evidence-based skills from CBT, DBT, ACT, "
-            "and self-compassion traditions. Each includes an "
-            "interactive exercise you can try right now."
+            "Skills from CBT, DBT, ACT, and self-compassion. "
+            "Each one has something you can try right now."
         )
         st.markdown("")
 
@@ -4084,10 +4082,9 @@ def page_skills():
 # ═══════════════════════════════════════════════════════════════════
 
 def page_history():
-    st.markdown("# 📂 History & Export")
+    st.markdown("# 📂 Your Stuff")
     st.markdown(
-        "Browse your saved analyses, review chat sessions, "
-        "and export your data."
+        "Saved analyses, chat sessions, and data export."
     )
     st.markdown("---")
 
@@ -4099,14 +4096,6 @@ def page_history():
         "📥 Export Data",
         "📥 Restore Backup",
     ])
-        
-        # ═════════════════════════════════════════════════════════════
-    #  TAB 4: RESTORE FROM BACKUP
-    # ═════════════════════════════════════════════════════════════
-    with tab_restore:
-        show_restore_widget(uid)    
-        
-    
 
     # ═════════════════════════════════════════════════════════════
     #  TAB 1: SAVED ANALYSES
@@ -4198,8 +4187,8 @@ def page_history():
 
         if not sessions:
             st.info(
-                "No chat sessions yet. Start a conversation "
-                "from the **💬 AI Chat** page."
+                "No conversations yet. Start one from "
+                "the **💬 Chat** page."
             )
         else:
             st.caption(f"{len(sessions)} chat session(s) found")
@@ -4257,7 +4246,7 @@ def page_history():
     # ═════════════════════════════════════════════════════════════
     with tab_export:
         st.markdown(
-            "Download your MindMirror data. **Your data belongs to you.**"
+            "Download your MindMirror data. **It's yours.**"
         )
         st.markdown("")
 
@@ -4280,8 +4269,8 @@ def page_history():
         # ── JSON Export ──────────────────────────────────────────
         st.markdown("#### 📦 Full Export (JSON)")
         st.caption(
-            "Complete export of all your data: journal entries, "
-            "analyses, chat messages, goals, check-ins, and profile."
+            "Everything: journal entries, analyses, chats, "
+            "goals, check-ins, and profile."
         )
 
         if st.button(
@@ -4380,8 +4369,7 @@ def page_history():
         # ── CSV Export (entries only) ────────────────────────────
         st.markdown("#### 📄 Journal Entries (CSV)")
         st.caption(
-            "Tabular export of journal entries for use in "
-            "spreadsheets or data analysis tools."
+            "Your journal entries in spreadsheet format."
         )
 
         if entries:
@@ -4416,7 +4404,7 @@ def page_history():
                 key="_download_csv",
             )
         else:
-            st.caption("No entries to export.")
+            st.caption("Nothing to export yet.")
 
         st.markdown("---")
 
@@ -4463,6 +4451,12 @@ def page_history():
                         f"📅 {cl.get('created_at', '')[:16]} — "
                         f"Source: {cl.get('trigger_snippet', '?')[:60]}"
                     )
+
+    # ═════════════════════════════════════════════════════════════
+    #  TAB 4: RESTORE FROM BACKUP
+    # ═════════════════════════════════════════════════════════════
+    with tab_restore:
+        show_restore_widget(uid)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -4519,8 +4513,7 @@ def _delete_all_user_data(user_id: int):
 def page_settings():
     st.markdown("# ⚙️ Settings")
     st.markdown(
-        "Configure your AI, privacy preferences, profile, "
-        "appearance, and data."
+        "AI setup, privacy, profile, appearance, and your data."
     )
     st.markdown("---")
 
@@ -4540,8 +4533,8 @@ def page_settings():
     with tab_ai:
         st.markdown("### 🔑 Gemini API Key")
         st.caption(
-            "Your API key is stored **only in your browser session** "
-            "and is never saved to the database. For persistent storage, "
+            "Your API key lives **only in your browser session** "
+            "and never touches the database. For persistent storage, "
             "add it to `.streamlit/secrets.toml`."
         )
 
