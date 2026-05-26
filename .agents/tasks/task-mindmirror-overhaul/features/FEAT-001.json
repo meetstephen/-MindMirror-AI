@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "fix",
   "description": "Security hardening: Add password-based authentication, fix URL-param login vulnerability, add input sanitization, rate limiting for AI calls, and secure API key handling",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In database.py: Add a password_hash column to the users table (use hashlib+secrets for hashing since bcrypt is not in deps). Add functions: create_user(username, password) -> int, verify_user(username, password) -> Optional[int], user_exists(username) -> bool. Use parameterized queries (already done, but verify all paths).",
     "In app.py Section 4 (auto-login): Remove the insecure URL ?user= auto-login that lets anyone access any account by typing a username. Replace with session-token-based persistence using st.session_state only (no URL params for auth).",
@@ -26,5 +26,5 @@
     "Run python -c \"import app; print('app.py imports cleanly')\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All verification tests pass. The Streamlit ScriptRunContext warnings during module import are expected when running outside streamlit run. Migration tested with legacy databases missing password_hash column. Rate limiting uses datetime objects in session_state list as specified."
 }
