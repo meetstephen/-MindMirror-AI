@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "New features for user retention and production readiness: smart daily check-in prompt, weekly email-style digest, insights notifications panel, streak recovery, improved onboarding with sample data option, and error handling hardening",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In app.py - page_dashboard: Add a 'Daily Check-In' card at the very top (before the welcome banner) that appears once per day. It asks: 'How are you feeling right now?' with a simple emoji selector (5 options from great to terrible) and optional one-line note. Saves as a mood_checkin. If already checked in today, show 'You checked in today' with their selection. Use session_state + database to track.",
     "In app.py - page_dashboard (or History): Add a 'Weekly Digest' section. When the user has 7+ days of entries, show a button 'Generate Weekly Digest'. This calls generate_narrative_summary with period='week' but frames it as a personal letter/email. Display in a card styled like a letter with greeting, body, and sign-off.",
@@ -31,5 +31,5 @@
     "Run python -c \"from app import _streak; entries = [{'entry_date': '2025-01-05'}, {'entry_date': '2025-01-03'}, {'entry_date': '2025-01-02'}]; print('Streak with grace:', _streak(entries))\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 8 changes implemented successfully. Streak grace period verified with test (entries on Jan 5, 3, 2 returns streak of 3). The _handle_ai_response helper checks for error indicators and wraps AI result display in page_analysis, page_chat, and dashboard narrative. For page_chat, errors are not saved as assistant messages and a Retry button is shown. Batch import now validates min 10 chars and shows sentiment breakdown summary. Daily check-in uses existing mood_checkins table with type daily_checkin. sqlite3 import consolidated at top of file."
 }
