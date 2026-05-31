@@ -314,7 +314,10 @@ def apply_theme():
     elif base_css:
         st.markdown(base_css, unsafe_allow_html=True)
     elif adaptive_css:
-        st.markdown(f"<style>{adaptive_css}</style>", unsafe_allow_html=True)
+        # Wrap in a full style element matching the base_css pattern
+        # to avoid the visible-CSS rendering bug in some Streamlit versions
+        safe_block = f"<style>\n{adaptive_css}\n</style>"
+        st.html(safe_block)
 
 apply_theme()
 
@@ -685,9 +688,9 @@ def render_sidebar():
                         "📝 No entry today. Even one sentence sharpens the signal."
                     )
                 elif _nudge_streak >= 3:
-                    st.caption(f"\U0001f525 {_nudge_streak}-day streak! Keep it up.")
+                    st.caption(f"\U0001f525 {_nudge_streak}-day streak. Consistency builds clarity.")
                 elif _last_sent is not None and _last_sent < -0.3:
-                    st.caption("💙 Checking in - how are things today?")
+                    st.caption("💙 A moment to pause - how are you feeling today?")
             except Exception:
                 pass
 
@@ -1322,7 +1325,7 @@ JOURNAL_TEMPLATES = {
         "label": "✏️ Freeform",
         "description": "Open space. No prompts, no structure. Just write.",
         "placeholder": (
-            "What's present for me right now..."
+            "What is present for me right now..."
         ),
         "prompts": None,
     },
@@ -1461,7 +1464,7 @@ def page_journal():
         if tmpl["prompts"] is None:
             # Freeform
             content = st.text_area(
-                "What's on your mind?",
+                "What is on your mind?",
                 height=240,
                 key="_j_content_free",
                 placeholder=tmpl["placeholder"],
@@ -2556,7 +2559,7 @@ def page_analysis():
 def page_chat():
     st.markdown("# 💬 Talk It Out")
     st.markdown(
-        "Explore what's on your mind. Select a mode "
+        "Explore what is on your mind. Select a mode "
         "and set the empathy level in the sidebar."
     )
     st.markdown("---")
@@ -2767,7 +2770,7 @@ def page_chat():
     # Check for retry of a failed message
     _retry_prompt = st.session_state.pop("_chat_retry_msg", None)
 
-    if _retry_prompt or (prompt := st.chat_input("Tell me what's on your mind…")):
+    if _retry_prompt or (prompt := st.chat_input("Share what is on your mind\u2026")):
         if _retry_prompt:
             prompt = _retry_prompt
         prompt = _sanitize_input(prompt)
