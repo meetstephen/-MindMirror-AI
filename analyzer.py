@@ -1639,13 +1639,13 @@ def _call_gemini(prompt, api_key, model="gemini-2.5-flash",
 # ══════════════════════════════════════════════════════════════════
 
 CONSENT_NOTICE_ANALYSIS = (
-    "📋 **Heads up:** This sends your writing to Google Gemini "
-    "for the AI to read. Nothing gets stored after."
+    "📋 **Privacy:** Your writing is sent to Google Gemini for analysis. "
+    "Nothing is stored afterward."
 )
 
 CONSENT_NOTICE_CHAT = (
-    "📋 **Heads up:** Your message and recent journal context "
-    "go to Google Gemini. Nothing is kept after the conversation."
+    "📋 **Privacy:** Your message and recent journal context are processed "
+    "by Google Gemini. Nothing persists after the conversation ends."
 )
 
 
@@ -1736,12 +1736,11 @@ def ai_analysis(entries, api_key, model="gemini-2.5-flash",
             goals_list = ", ".join(g.get("title", "") for g in active_goals[:5])
             goals_context = f"\n\nUSER'S ACTIVE GOALS: {goals_list}"
 
-    prompt = f"""You are someone who has read all of this person's journal entries carefully 
-and notices patterns. You combine real insight with genuine warmth - like a friend 
-who reads a lot of psychology and pays close attention.
+    prompt = f"""You are an incisive observer who has studied this person's journal entries 
+with care and precision. You combine deep emotional intelligence with clarity of thought.
 
-Write like you're explaining what you've noticed to them over coffee. Be honest 
-but kind. Use simple language.
+Write with confidence and warmth. Be direct, precise, and say more with fewer words. 
+Respect the reader's intelligence. No filler, no platitudes, no therapy-speak.
 
 {profile_context}
 {goals_context}
@@ -1752,46 +1751,45 @@ JOURNAL ENTRIES:
 
 YOUR REPORT SHOULD COVER:
 
-1. **How you have been feeling** - What emotions keep showing up? What's missing 
-   or being held back? How wide is the emotional range?
+1. **Emotional landscape** - What emotions dominate? What is absent or suppressed? 
+   Map the full range with precision.
 
-2. **Your thinking habits** - Any thinking traps you fall into (like jumping to 
-   the worst case, black-and-white thinking, mind reading)? Offer gentler ways 
-   to look at things.
+2. **Cognitive patterns** - Identify thinking traps (catastrophizing, black-and-white 
+   reasoning, mind reading) with specific examples. Offer sharper alternatives.
 
-3. **Patterns and routines** - What keeps repeating? When do things feel better 
-   or worse? Include day-of-week stuff and topic connections.
+3. **Recurring dynamics** - What cycles repeat? When do conditions improve or 
+   deteriorate? Include temporal patterns and topic correlations.
 
-4. **How you are growing** - Comment on emotional steadiness, bouncing back, and 
-   self-awareness over time. Notice progress, even small stuff.
+4. **Growth trajectory** - Emotional regulation, resilience, and self-awareness 
+   over time. Name the progress precisely, however incremental.
 
-5. **What might be coming** - Based on the trends, what could the next stretch 
-   look like? What might help?
+5. **What is ahead** - Based on trajectories, what is likely coming? What would 
+   make the difference?
 
-6. **Your people** - How do relationships and social stuff show up in the entries?
+6. **Relational patterns** - How do connections and social dynamics surface in 
+   these entries?
 
-7. **What is already working** - What coping strategies, strengths, and supports 
-   are already helping? Lean into those.
+7. **What is already working** - Name the strategies, strengths, and supports 
+   that are actively helping. Reinforce them.
 
-8. **Things to try** - 3-5 specific, doable suggestions tied to their actual 
-   patterns. Include at least one grounding practice or small daily thing.
+8. **Recommendations** - 3-5 specific, actionable suggestions rooted in their 
+   actual patterns. Include at least one embodied practice.
 
-9. **The bigger picture** - A short "story" of where they've been emotionally, 
-   written directly to them ("You've been..."). End with something real and 
-   encouraging.
+9. **The arc** - A brief narrative of their emotional trajectory, written directly 
+   to them ("You have been..."). End with something honest and grounding.
 
-HOW TO WRITE THIS:
-- Be warm and never judgmental
-- Use simple words, not jargon
-- Be honest but compassionate
-- Reference specific entries when you notice something
-- Use emoji sparingly for warmth (not overload)
-- If you notice anything that sounds like a crisis, gently include support resources
-- Frame everything as patterns to explore, not diagnoses
-- Acknowledge this is based on limited entries and is not a clinical assessment
-- If the user has active goals listed above, note any connections between journal patterns and those stated goals
+VOICE:
+- Confident and warm, never judgmental
+- Precise language, no jargon or filler
+- Honest and compassionate in equal measure
+- Reference specific entries as evidence
+- Use emoji sparingly (1-2 max)
+- If crisis indicators appear, include support resources clearly
+- Frame observations as patterns worth examining, not diagnoses
+- Acknowledge limitations of the data
+- If active goals are listed above, connect journal patterns to those goals
 
-Write a thoughtful, insightful report."""
+Write an insightful, precise report."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.6, max_tokens=6000)
 
@@ -1804,56 +1802,53 @@ CHAT_MODE_PROMPTS = {
     "open": {
         "label": "💬 Open Conversation",
         "system": (
-            "You are MindMirror AI - think of yourself as a perceptive friend "
-            "who's catching up with someone they care about. Listen, reflect back "
-            "what you hear, ask good follow-up questions, and share observations "
-            "when they might help. You're not a therapist. You're someone who "
-            "pays attention and genuinely cares. Use contractions, keep it natural."
+            "You are MindMirror AI. You are an articulate, emotionally intelligent "
+            "companion. Listen with precision, reflect what you observe, ask questions "
+            "that open new angles, and share insight when it serves them. You are not "
+            "a therapist. You are someone with genuine depth who pays close attention "
+            "and communicates with clarity and care."
         ),
     },
     "cbt": {
         "label": "🧠 CBT Coaching",
         "system": (
-            "You are MindMirror AI in thinking-patterns mode. Help them look at "
-            "their thoughts from different angles - spot the thinking traps "
-            "(catastrophizing, all-or-nothing, mind reading), question whether "
-            "the evidence really supports the belief, and find more balanced ways "
-            "to see things. Be clear about what you're doing (e.g., 'Let's look "
-            "at the evidence here...' or 'That sounds like it might be worst-case "
-            "thinking - let's check'). Structured but warm. You're not a licensed "
-            "therapist - frame this as exploring together."
+            "You are MindMirror AI in cognitive coaching mode. Help them examine "
+            "their thinking with precision. Identify distortions (catastrophizing, "
+            "all-or-nothing reasoning, mind reading), test assumptions against "
+            "evidence, and guide toward more accurate perspectives. Be transparent "
+            "about the process: name what you are doing and why. Structured yet "
+            "warm. Frame this as collaborative inquiry, not clinical intervention."
         ),
     },
     "validation": {
         "label": "💚 Validation Mode",
         "system": (
-            "You are MindMirror AI in validation mode. Your job is to make them "
-            "feel genuinely heard. Reflect their emotions back with nuance. Let "
-            "them know what they feel makes sense - you're not trying to fix "
-            "anything unless they ask. Say things like 'Of course you feel that "
-            "way,' and 'That makes complete sense.' Be warm, present, and real. "
-            "Only offer suggestions if they ask for them."
+            "You are MindMirror AI in validation mode. Your role is to make them "
+            "feel deeply understood. Reflect their emotions with nuance and accuracy. "
+            "Affirm the logic of their feelings without rushing to solutions. "
+            "Be present, steady, and precise in your empathy. Offer perspective "
+            "only when invited."
         ),
     },
     "reflection": {
         "label": "🪞 Reflective Listening",
         "system": (
             "You are MindMirror AI in reflective mode. Mirror their words and "
-            "feelings back clearly. Ask good questions that help them figure "
-            "things out on their own. Skip the direct advice. Instead, help them "
-            "explore: 'What do you think is really going on here?' 'What would "
-            "change if that were true?' 'What does that feeling tell you about "
-            "what you need?' Be patient. Trust that they have the answers."
+            "emotional undertones with clarity. Ask questions that catalyze "
+            "self-discovery rather than offering answers. Help them think: "
+            "'What is really at stake here?' 'What would shift if that were true?' "
+            "'What does this tell you about what you need?' Trust their capacity "
+            "to find their own answers."
         ),
     },
     "homework": {
         "label": "📋 Check-in",
         "system": (
-            "You are MindMirror AI in check-in mode. Help them look at how "
-            "things are going with their goals and the stuff they've been "
-            "working on. Notice what's going well, talk through what's been "
-            "hard, and help figure out next steps. Reference their journal "
-            "entries and patterns when relevant. Be encouraging and specific."
+            "You are MindMirror AI in accountability mode. Help them assess "
+            "progress on their goals and commitments with honesty and specificity. "
+            "Acknowledge what is working, examine what is not, and help clarify "
+            "next steps. Reference their journal patterns when relevant. "
+            "Be encouraging and precise."
         ),
     },
 }
@@ -1872,24 +1867,24 @@ def _build_chat_context(entries, history, chat_mode="open",
     # Empathy calibration
     if empathy_level <= 0.25:
         context_parts.append(
-            "TONE: Be straight with them. Push them to think critically. "
-            "Don't dodge hard truths, but stay respectful."
+            "TONE: Be direct. Challenge their thinking without softening the edges. "
+            "Respectful honesty, no cushioning."
         )
     elif empathy_level <= 0.5:
         context_parts.append(
-            "TONE: Balance kindness with gentle challenge. Let them know "
-            "their feelings make sense, but also nudge toward growth."
+            "TONE: Balance warmth with clarity. Validate what is real, "
+            "then guide toward sharper perspective."
         )
     elif empathy_level <= 0.75:
         context_parts.append(
-            "TONE: Be warm and supportive. Prioritize letting them know "
-            "you get it, while gently weaving in what you notice."
+            "TONE: Lead with understanding. Prioritize making them feel seen, "
+            "while weaving in observation where it serves."
         )
     else:
         context_parts.append(
-            "TONE: Be really gentle right now. They might be having a "
-            "hard time. Maximum warmth and softness. Keep responses "
-            "short and steady - something to ground them."
+            "TONE: Maximum gentleness. They may be in a fragile state. "
+            "Keep responses brief, steady, and grounding. "
+            "Warmth and presence above all else."
         )
 
     # Psyche profile
@@ -1987,20 +1982,20 @@ def ai_chat(message, entries, history, api_key,
     # ── Crisis check ─────────────────────────────────────────────
     if detect_crisis(message):
         crisis_response = _call_gemini(
-            f"""The person you're talking to just said something that worries you. 
-They might be in real distress. Respond like a friend who is genuinely concerned:
-1. Let them know you hear them and you're worried (2-3 sentences, real and caring)
-2. Offer something to steady them right now (like the 5-4-3-2-1 senses exercise)
-3. Share these resources clearly
+            f"""The person you are speaking with has expressed something that indicates 
+real distress. Respond with grounded care and clarity:
+1. Acknowledge what they have shared directly and honestly (2-3 sentences, genuine concern)
+2. Offer one immediate grounding technique (the 5-4-3-2-1 senses exercise)
+3. Present these resources clearly and without hesitation
 
 Their message: "{message}"
 
-Be real and warm. Include these resources:
+Be steady and direct. Include these resources:
 - 988 Suicide & Crisis Lifeline: Call or text 988 (24/7)
 - Crisis Text Line: Text HOME to 741741
 - International: https://www.iasp.info/resources/Crisis_Centres/
 
-End with something genuine like: "I'm glad you're talking about this. That takes courage." """,
+Close with something grounded: "Speaking about this matters. It takes real courage." """,
             api_key, model, temperature=0.3, max_tokens=1000,
         )
         return crisis_response
@@ -2053,9 +2048,9 @@ def ai_reflection_prompts(entries, api_key, model="gemini-2.5-flash",
     if psyche_profile:
         profile_context = f"\nUser values: {json.dumps(psyche_profile)}"
 
-    prompt = f"""Based on these recent journal entries, generate 5 questions that will 
-actually make this person think. Like a curious friend who's been reading their 
-stuff and wants to help them see what they can't see on their own.
+    prompt = f"""Based on these recent journal entries, generate 5 reflection questions 
+that will create genuine insight. Questions that illuminate what this person 
+cannot yet see on their own.
 
 ENTRIES:
 {entry_block}
@@ -2064,11 +2059,11 @@ ENTRIES:
 
 GUIDELINES:
 - Each question should target a specific pattern or theme from their entries
-- Mix "look inward" questions with "try something" questions
-- Include one about what's already going well
-- Include one that gently pokes at a thinking trap
-- Make them feel warm and specific to this person (not generic self-help)
-- Add a brief (1-sentence) note on why you're asking
+- Mix introspective questions with action-oriented ones
+- Include one that highlights existing strength
+- Include one that illuminates a cognitive blind spot
+- Make each question specific to this person, never generic
+- Add a brief (1-sentence) note on why you are asking
 - Use emoji sparingly
 
 Format each as:
@@ -2095,31 +2090,30 @@ def generate_session_summary(chat_messages, api_key,
         for m in chat_messages[-30:]
     )
 
-    prompt = f"""Look back at this conversation and write a quick, warm recap - 
-like a friend summarizing what you talked about.
+    prompt = f"""Review this conversation and write a precise, meaningful recap.
 
 CONVERSATION:
 {convo}
 
 WRITE:
-1. **What this was about** - One sentence on the main thing explored.
+1. **Core focus** - One sentence capturing the essential thread explored.
 
-2. **What stood out** - 2-3 moments where something clicked or felt important.
-   Be specific about what they realized.
+2. **Key moments** - 2-3 points where something shifted or crystallized.
+   Be specific about what emerged.
 
-3. **How it shifted** - How did things feel at the start vs. the end?
-   (e.g., "Started feeling stuck about work, figured out it was really about 
-   boundaries, ended feeling clearer")
+3. **The movement** - How the emotional or intellectual ground shifted 
+   from start to finish. (e.g., "Began with confusion about work, 
+   uncovered a boundary issue, ended with clarity on next steps.")
 
-4. **What you showed** - 1-2 strengths they brought to this conversation 
-   (being honest with themselves, asking hard questions, etc.)
+4. **Strengths demonstrated** - 1-2 qualities they brought to this 
+   conversation (honesty, willingness to sit with discomfort, etc.)
 
-5. **Maybe next** - 2-3 small things they could try, framed as ideas not 
-   instructions. (e.g., "You might try..." "Could be worth exploring..." 
-   "A small experiment: ...")
+5. **Worth trying** - 2-3 small, specific actions they could take. 
+   Frame as invitations. (e.g., "You might explore..." 
+   "Worth experimenting with..." "A small test: ...")
 
-STYLE: Warm, real, concise. Talk directly to them ("You explored...").
-Keep it under 300 words."""
+VOICE: Direct, warm, concise. Speak to them ("You explored...").
+Under 300 words."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.5, max_tokens=1200)
 
@@ -2155,8 +2149,8 @@ def generate_narrative_summary(entries, api_key,
                 if val is not None:
                     data_summary += f"\n{metric.replace('_', ' ').title()}: {val}/100"
 
-    prompt = f"""You're writing a thoughtful "{period} in review" for someone you 
-care about, based on their journal entries.
+    prompt = f"""Write a "{period} in review" narrative for this person, 
+drawn from their journal entries.
 
 ENTRIES FROM THIS {period.upper()}:
 {entry_block}
@@ -2165,16 +2159,17 @@ PATTERN DATA:
 {data_summary}
 
 WRITE:
-A warm recap (250-400 words) that:
-1. Tells the story of their {period} directly to them ("This {period}, you...")
-2. Uses 1-2 good metaphors to describe how things have been
-3. Gives equal weight to the hard parts and the strong moments
-4. Notes patterns or shifts with specific references
-5. Includes 2-3 "what if" ideas for the next stretch
-   (e.g., "What if, next time you notice [pattern], you tried [alternative]?")
-6. Ends with something genuine and forward-looking
+A precise, evocative recap (250-400 words) that:
+1. Narrates their {period} directly ("This {period}, you...")
+2. Uses 1-2 resonant metaphors that illuminate rather than decorate
+3. Honors the difficult alongside the strong with equal specificity
+4. Names patterns and shifts with evidence
+5. Offers 2-3 "what if" possibilities for the next stretch
+   (e.g., "What if, next time [pattern] surfaces, you tried [alternative]?")
+6. Closes with something honest and forward-looking
 
-TONE: Like a thoughtful friend writing them a letter after really paying attention.
+VOICE: Literary precision. Warm but never sentimental. 
+The quality of prose that makes someone feel understood.
 Use emoji sparingly (2-3 max)."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.8, max_tokens=2000)
@@ -2195,8 +2190,8 @@ def ai_distortion_analysis(entries, distortion_data, api_key,
 
     dist_block = json.dumps(distortion_data, indent=2)
 
-    prompt = f"""You're looking at thinking patterns in someone's journal entries - 
-the kind of mental habits we all fall into without noticing.
+    prompt = f"""Analyze the cognitive patterns present in these journal entries with 
+precision and compassion.
 
 ENTRIES:
 {entry_block}
@@ -2205,26 +2200,26 @@ DETECTED PATTERNS (from local analysis):
 {dist_block}
 
 PROVIDE:
-1. **What keeps showing up** - Which thinking traps appear most? Are they 
-   connected (e.g., jumping to worst-case often leads to "should" statements)?
+1. **Dominant patterns** - Which distortions appear most frequently? How do they 
+   interconnect (e.g., catastrophizing feeding into "should" statements)?
 
-2. **When and why** - What situations or topics seem to trigger these patterns?
+2. **Trigger contexts** - What situations, topics, or states activate these patterns?
 
-3. **Gentler ways to see it** - For each major pattern, offer a specific, 
-   kind reframe using their own words and situations.
-   Format: "Instead of: [their thought] -> Try: [reframe]"
+3. **Precise reframes** - For each major pattern, offer a specific, grounded 
+   alternative using their own language and circumstances.
+   Format: "Instead of: [their thought] -> Consider: [reframe]"
 
-4. **Things to try** - 2-3 specific exercises they could experiment with.
-   Label each clearly (e.g., "Evidence check", "Thought record").
+4. **Practices** - 2-3 specific cognitive exercises they can apply.
+   Name each clearly (e.g., "Evidence audit", "Thought record").
 
-5. **What's already good** - Note any entries where they showed balanced 
-   thinking or caught themselves. That matters.
+5. **Existing clarity** - Note entries where balanced thinking or self-correction 
+   already appeared. Reinforce those moments.
 
 IMPORTANT: 
-- Be really compassionate - these patterns are human, not flaws
-- Frame everything as habits to notice, not problems to fix
-- This is not a diagnosis
-- Use plain, warm language"""
+- These patterns are universal, not defects
+- Frame as habits to observe, not problems to solve
+- This is pattern recognition, not diagnosis
+- Write with precision and care"""
 
     return _call_gemini(prompt, api_key, model, temperature=0.6, max_tokens=2500)
 
@@ -2254,7 +2249,7 @@ def ai_mood_forecast(entries, local_data, api_key,
         if local_data.get("topic_sentiment"):
             pattern_data += f"\nTopic-mood links: {json.dumps(dict(list(local_data['topic_sentiment'].items())[:5]))}"
 
-    prompt = f"""Based on what you've seen in their journal, create a gentle 
+    prompt = f"""Based on the patterns in their journal, create a precise 
 "emotional weather forecast" for the coming days.
 
 RECENT ENTRIES:
@@ -2265,22 +2260,22 @@ PATTERN DATA:
 
 CREATE A FORECAST THAT INCLUDES:
 
-1. **🌤️ Outlook** - A brief, honest take on what's ahead (use a weather 
-   metaphor if it fits naturally)
+1. **🌤️ Outlook** - A concise, honest read on what is likely ahead 
+   (use a weather metaphor only if it fits naturally)
 
-2. **📅 Day-by-Day** - If day-of-week patterns exist, note which days might 
-   be tougher and which tend to feel lighter
+2. **📅 Day-by-Day** - If day-of-week patterns exist, note which days 
+   tend to be more demanding and which offer relief
 
-3. **⚡ Watch for** - 1-2 specific triggers or patterns to keep an eye on
+3. **⚡ Watch for** - 1-2 specific triggers or patterns worth noticing early
 
-4. **🛡️ What's helped before** - 2-3 things that have historically made 
-   things better for them
+4. **🛡️ What has worked** - 2-3 strategies that have historically 
+   improved their state
 
-5. **🌱 Opportunity** - One thing the coming days could be good for
+5. **🌱 Opportunity** - One thing the coming days are well-suited for
 
-TONE: Warm and honest. Keep it simple. Like a friend who knows them well 
-giving a heads-up. Keep it concise (150-250 words). This is just pattern-based 
-guesswork and should feel supportive, not like a prediction."""
+VOICE: Confident and grounded. Concise (150-250 words). This is pattern-based 
+observation, not prediction. Frame it as intelligence they can use, 
+not fortune-telling."""
 
     return _call_gemini(prompt, api_key, model, temperature=0.8, max_tokens=1200)
 
@@ -2316,11 +2311,11 @@ def generate_micro_celebration(entries, goals=None):
 
     if streak >= 7:
         celebrations.append(
-            f"🔥 {streak} days straight. That takes something."
+            f"🔥 {streak} consecutive days. Consistency at this level is rare."
         )
     elif streak >= 3:
         celebrations.append(
-            f"✨ {streak} days running. You're showing up for yourself."
+            f"✨ {streak} days running. A rhythm is forming."
         )
 
     # Entry milestone
@@ -2329,8 +2324,7 @@ def generate_micro_celebration(entries, goals=None):
     for m in milestones:
         if count == m:
             celebrations.append(
-                f"🎉 {m} entries. That's {m} times you showed up "
-                f"and paid attention."
+                f"🎉 {m} entries. {m} acts of deliberate attention."
             )
 
     # Positive shift
@@ -2348,8 +2342,8 @@ def generate_micro_celebration(entries, goals=None):
             older_avg = sum(older_sents) / len(older_sents)
             if recent_avg > older_avg + 0.2:
                 celebrations.append(
-                    "📈 Things have been trending better lately. "
-                    "Whatever you're doing, it's working."
+                    "📈 Your recent entries show a measurable upward shift. "
+                    "Something you are doing is working."
                 )
 
     # Emotion diversity
@@ -2361,8 +2355,8 @@ def generate_micro_celebration(entries, goals=None):
                 all_emos.update(emos.keys())
         if len(all_emos) >= 5:
             celebrations.append(
-                f"🎨 You've named {len(all_emos)} different emotions "
-                f"recently. That range is a real strength."
+                f"🎨 {len(all_emos)} distinct emotions named recently. "
+                f"That emotional range is a genuine asset."
             )
 
     # Coping wins (detected positive entries after negative ones)
@@ -2373,8 +2367,8 @@ def generate_micro_celebration(entries, goals=None):
             if prev_sent is not None and curr_sent is not None:
                 if prev_sent < -0.3 and curr_sent > 0.1:
                     celebrations.append(
-                        "💪 You came back from a rough patch. "
-                        "That's not nothing."
+                        "💪 You moved through a difficult stretch and came out the other side. "
+                        "That is resilience in action."
                     )
                     break
 
@@ -2384,8 +2378,8 @@ def generate_micro_celebration(entries, goals=None):
         if completed:
             celebrations.append(
                 f"🏆 {len(completed)} goal"
-                f"{'s' if len(completed) > 1 else ''} done. "
-                f"You said you'd do it and you did."
+                f"{'s' if len(completed) > 1 else ''} completed. "
+                f"Intention followed by execution."
             )
 
     return celebrations[:3]  # max 3 at a time
@@ -2400,14 +2394,14 @@ def get_community_stats():
     These are approximate population-level norms, not from actual
     user data (since we don't aggregate across users)."""
     return {
-        "midweek_stress": "42% of people report higher stress on Wednesdays",
-        "sunday_anxiety": "35% experience anticipatory anxiety on Sunday evenings",
-        "mood_dips": "Most people experience 2-3 mood dips per week — it's normal",
-        "journaling_benefit": "Regular journaling is associated with a 25% reduction in stress markers",
-        "sleep_mood": "Poor sleep correlates with 40% lower mood the following day",
-        "exercise_mood": "Even 10 minutes of movement can boost mood for up to 2 hours",
-        "social_connection": "Brief social interactions improve mood in 68% of people",
-        "gratitude": "Noting 3 things you're grateful for can shift mood within 2 weeks",
+        "midweek_stress": "42% of people report elevated stress on Wednesdays - a consistent midweek pattern",
+        "sunday_anxiety": "35% experience anticipatory anxiety on Sunday evenings before the week begins",
+        "mood_dips": "2-3 mood dips per week is the human baseline - not a sign of failure",
+        "journaling_benefit": "Consistent journaling correlates with a 25% reduction in measurable stress markers",
+        "sleep_mood": "Poor sleep correlates with 40% lower mood the following day - the connection is direct",
+        "exercise_mood": "10 minutes of movement elevates mood for up to 2 hours - the threshold is lower than expected",
+        "social_connection": "Brief social interaction improves mood state in 68% of people studied",
+        "gratitude": "Noting 3 specific things you appreciate can shift baseline mood within 2 weeks",
     }
 
 
@@ -2455,19 +2449,18 @@ SKILL_MODULES = {
                 "name": "5-4-3-2-1 Grounding",
                 "duration": "3 min",
                 "description": (
-                    "Name 5 things you see, 4 you can touch, "
-                    "3 you hear, 2 you smell, 1 you taste. "
-                    "This anchors you in the present moment."
+                    "A sensory inventory that pulls attention out of thought "
+                    "and into the present moment. Five senses, descending count, "
+                    "immediate effect."
                 ),
                 "exercise": (
-                    "Try it right now. Look around and slowly notice:\n"
-                    "- **5 things you see** (e.g., the light on the wall, "
-                    "the edge of a book...)\n"
-                    "- **4 things you can touch** (the chair, your clothes...)\n"
-                    "- **3 things you hear** (distant traffic, breathing...)\n"
-                    "- **2 things you smell** (coffee, fresh air...)\n"
-                    "- **1 thing you taste** (tea, toothpaste...)\n\n"
-                    "Notice how your attention shifts to the present."
+                    "Begin now. Move through each sense deliberately:\n"
+                    "- **5 things you see** (notice texture, light, edges)\n"
+                    "- **4 things you can touch** (feel temperature, weight, fabric)\n"
+                    "- **3 things you hear** (layer the sounds: near, mid, far)\n"
+                    "- **2 things you smell** (even subtle: air, paper, skin)\n"
+                    "- **1 thing you taste** (whatever is present)\n\n"
+                    "Notice the shift. You moved from abstraction to presence."
                 ),
             },
             {
@@ -2475,17 +2468,17 @@ SKILL_MODULES = {
                 "name": "Box Breathing",
                 "duration": "4 min",
                 "description": (
-                    "Breathe in for 4 counts, hold for 4, out for 4, "
-                    "hold for 4. Repeat 4 cycles. This activates your "
-                    "parasympathetic nervous system."
+                    "A 4-4-4-4 breathing protocol that directly activates "
+                    "your parasympathetic nervous system. Used by high-performance "
+                    "professionals under acute stress."
                 ),
                 "exercise": (
-                    "Set a timer for 4 minutes and follow this pattern:\n"
+                    "Set a timer for 4 minutes. Follow this cadence:\n"
                     "- **Inhale** slowly: 1... 2... 3... 4...\n"
                     "- **Hold**: 1... 2... 3... 4...\n"
                     "- **Exhale** slowly: 1... 2... 3... 4...\n"
                     "- **Hold**: 1... 2... 3... 4...\n\n"
-                    "Repeat. Notice the calm settling in."
+                    "Repeat. By the third cycle, your heart rate will respond."
                 ),
             },
             {
@@ -2493,19 +2486,20 @@ SKILL_MODULES = {
                 "name": "Body Scan",
                 "duration": "5 min",
                 "description": (
-                    "Slowly move your attention from your toes to the "
-                    "top of your head, noticing sensations without judgment."
+                    "A systematic sweep of attention from feet to crown, "
+                    "observing sensation without interpretation. Builds "
+                    "interoceptive awareness."
                 ),
                 "exercise": (
-                    "Close your eyes and bring attention to:\n"
-                    "- **Feet**: Any warmth, tingling, pressure?\n"
-                    "- **Legs**: Tension or relaxation?\n"
-                    "- **Stomach**: Tight, fluttery, calm?\n"
-                    "- **Chest**: Notice your heartbeat and breath\n"
-                    "- **Shoulders**: Release any held tension\n"
-                    "- **Face**: Soften your jaw, forehead, eyes\n"
-                    "- **Crown**: Feel the whole body at once\n\n"
-                    "Wherever you find tension, breathe into that spot."
+                    "Close your eyes. Move attention through each region:\n"
+                    "- **Feet**: Temperature, pressure, contact with ground\n"
+                    "- **Legs**: Where is tension held? Where is it absent?\n"
+                    "- **Stomach**: Tight, open, fluttering, still?\n"
+                    "- **Chest**: Heartbeat, breath rhythm, expansion\n"
+                    "- **Shoulders**: Let gravity take what you are holding\n"
+                    "- **Face**: Soften jaw, brow, the space around your eyes\n"
+                    "- **Crown**: Hold the whole body in awareness at once\n\n"
+                    "Where you find tension, direct one slow breath there."
                 ),
             },
         ],
@@ -2520,20 +2514,22 @@ SKILL_MODULES = {
                 "duration": "5 min",
                 "description": (
                     "Temperature, Intense exercise, Paced breathing, "
-                    "Progressive relaxation — a DBT skill for acute distress."
+                    "Progressive relaxation. A DBT protocol for acute "
+                    "emotional overwhelm. Works with physiology, not against it."
                 ),
                 "exercise": (
-                    "When emotions feel overwhelming, try TIPP:\n\n"
-                    "**T — Temperature**: Splash cold water on your face "
-                    "or hold ice cubes. The cold activates the dive reflex "
-                    "and slows your heart.\n\n"
-                    "**I — Intense Exercise**: Do 30 seconds of jumping jacks, "
-                    "push-ups, or run in place. Physical intensity channels "
-                    "emotional energy.\n\n"
-                    "**P — Paced Breathing**: Breathe out longer than you breathe "
-                    "in (e.g., in for 4, out for 6).\n\n"
-                    "**P — Progressive Relaxation**: Tense each muscle group "
-                    "for 5 seconds, then release."
+                    "When emotional intensity peaks, apply in sequence:\n\n"
+                    "**T - Temperature**: Splash cold water on your face "
+                    "or hold ice. The mammalian dive reflex slows heart rate "
+                    "within seconds.\n\n"
+                    "**I - Intense Exercise**: 30 seconds of jumping jacks, "
+                    "push-ups, or running in place. Channel the physiological "
+                    "activation.\n\n"
+                    "**P - Paced Breathing**: Extend the exhale beyond the inhale "
+                    "(e.g., in for 4, out for 6). This signals safety to your "
+                    "nervous system.\n\n"
+                    "**P - Progressive Relaxation**: Tense each muscle group "
+                    "for 5 seconds, then release completely."
                 ),
             },
             {
@@ -2542,17 +2538,17 @@ SKILL_MODULES = {
                 "duration": "2 min",
                 "description": (
                     "Stop, Take a step back, Observe, Proceed mindfully. "
-                    "Prevents impulsive reactions."
+                    "A circuit-breaker between stimulus and reaction."
                 ),
                 "exercise": (
-                    "Next time you feel reactive:\n\n"
-                    "**S — Stop**: Freeze. Don't act on the impulse.\n\n"
-                    "**T — Take a step back**: Physically or mentally step "
-                    "away from the situation. Take a breath.\n\n"
-                    "**O — Observe**: What's happening inside you? "
-                    "What triggered this? What are the facts?\n\n"
-                    "**P — Proceed mindfully**: Choose your response "
-                    "based on your values, not your impulse."
+                    "When you feel the pull toward reaction:\n\n"
+                    "**S - Stop**: Freeze. Do not act on the impulse.\n\n"
+                    "**T - Take a step back**: Create physical or mental distance. "
+                    "One breath.\n\n"
+                    "**O - Observe**: What is happening internally? "
+                    "What triggered this? What are the facts versus the narrative?\n\n"
+                    "**P - Proceed mindfully**: Choose your response from "
+                    "your values, not your reactivity."
                 ),
             },
             {
@@ -2560,18 +2556,20 @@ SKILL_MODULES = {
                 "name": "Radical Acceptance",
                 "duration": "5 min",
                 "description": (
-                    "Acknowledging reality as it is without judgment. "
-                    "Acceptance ≠ approval — it reduces suffering."
+                    "Acknowledging reality without judgment or resistance. "
+                    "Acceptance is not approval. It is the decision to stop "
+                    "adding suffering to pain."
                 ),
                 "exercise": (
-                    "Think of something you're struggling to accept.\n\n"
-                    "Repeat to yourself:\n"
-                    "- \"This is what's happening right now.\"\n"
-                    "- \"I can't change what has already happened.\"\n"
-                    "- \"Fighting reality only adds suffering.\"\n"
+                    "Identify something you are struggling to accept.\n\n"
+                    "Repeat with intention:\n"
+                    "- \"This is what is happening right now.\"\n"
+                    "- \"I cannot change what has already occurred.\"\n"
+                    "- \"Resisting reality adds suffering to pain.\"\n"
                     "- \"I can accept this AND work toward change.\"\n\n"
-                    "Notice: acceptance often feels like a sigh or "
-                    "a release of tension. That's the letting go."
+                    "Notice: acceptance often arrives as a physical release - "
+                    "a softening in the chest, a dropped breath. That is "
+                    "the body letting go of the fight."
                 ),
             },
         ],
@@ -2585,20 +2583,21 @@ SKILL_MODULES = {
                 "name": "Self-Compassion Break",
                 "duration": "3 min",
                 "description": (
-                    "Kristin Neff's three components: mindfulness, "
-                    "common humanity, and self-kindness."
+                    "Kristin Neff's three-component practice: mindfulness, "
+                    "common humanity, and self-kindness. A complete "
+                    "reorientation in under three minutes."
                 ),
                 "exercise": (
-                    "When you're being hard on yourself:\n\n"
+                    "When self-criticism arrives:\n\n"
                     "**1. Mindfulness**: \"This is a moment of suffering.\" "
-                    "(Acknowledge the pain without exaggerating or minimizing.)\n\n"
-                    "**2. Common Humanity**: \"Suffering is part of the human "
-                    "experience. I'm not alone in this.\" "
-                    "(Connect to shared experience.)\n\n"
-                    "**3. Self-Kindness**: Place a hand on your heart and say: "
-                    "\"May I be kind to myself. May I give myself the compassion "
-                    "I need.\"\n\n"
-                    "Sit with the warmth of that intention."
+                    "(Name it precisely. Do not minimize or amplify.)\n\n"
+                    "**2. Common Humanity**: \"This is part of being human. "
+                    "I am not alone in this experience.\" "
+                    "(Connect to the universality of struggle.)\n\n"
+                    "**3. Self-Kindness**: Place a hand on your chest and say: "
+                    "\"May I offer myself the same compassion I would give "
+                    "someone I love.\"\n\n"
+                    "Stay with the intention. Let it settle."
                 ),
             },
             {
@@ -2606,19 +2605,19 @@ SKILL_MODULES = {
                 "name": "Letter to Yourself",
                 "duration": "10 min",
                 "description": (
-                    "Write a letter from the perspective of a loving friend "
-                    "who sees your struggle clearly."
+                    "Write from the perspective of someone who sees your "
+                    "situation with complete clarity and unconditional regard."
                 ),
                 "exercise": (
-                    "Imagine a friend who loves you unconditionally, "
-                    "who sees your pain AND your strength.\n\n"
+                    "Imagine someone who understands your full context - "
+                    "your pain and your strength in equal measure.\n\n"
                     "Write a letter from their perspective:\n"
-                    "- What would they say about your situation?\n"
-                    "- How would they acknowledge your feelings?\n"
-                    "- What encouragement would they offer?\n"
-                    "- What strengths would they remind you of?\n\n"
-                    "Read it back to yourself slowly. "
-                    "You deserve these words."
+                    "- What would they say about what you are facing?\n"
+                    "- How would they name what you are feeling?\n"
+                    "- What would they want you to remember?\n"
+                    "- What strength would they point to as evidence?\n\n"
+                    "Read it back slowly. These words are as true as "
+                    "anything your inner critic has said."
                 ),
             },
             {
@@ -2626,19 +2625,19 @@ SKILL_MODULES = {
                 "name": "Rewriting the Inner Critic",
                 "duration": "5 min",
                 "description": (
-                    "Identify your inner critic's voice and transform "
-                    "it into a supportive coach."
+                    "Identify the critic's recurring script and rewrite it "
+                    "with the precision of a skilled coach."
                 ),
                 "exercise": (
-                    "**Step 1**: Write down one harsh thing your inner "
-                    "critic says regularly. (e.g., \"You always mess up.\")\n\n"
-                    "**Step 2**: Notice: Would you say this to a friend? "
-                    "How does it feel to read it?\n\n"
-                    "**Step 3**: Rewrite it as a supportive coach would:\n"
-                    "\"You're learning, and mistakes are part of growth. "
-                    "What can we take from this?\"\n\n"
-                    "**Step 4**: Practice the rewrite every time the "
-                    "critic speaks up."
+                    "**Step 1**: Write down one statement your inner "
+                    "critic repeats. (e.g., \"You always fail at this.\")\n\n"
+                    "**Step 2**: Ask: Would you say this to someone you "
+                    "respect? What does it cost you to believe it?\n\n"
+                    "**Step 3**: Rewrite it with accuracy and compassion:\n"
+                    "\"This is difficult, and difficulty is not evidence of "
+                    "inadequacy. What can I learn here?\"\n\n"
+                    "**Step 4**: Each time the critic speaks, respond with "
+                    "your rewrite. Repetition builds the new path."
                 ),
             },
         ],
@@ -2652,20 +2651,21 @@ SKILL_MODULES = {
                 "name": "Thought Record",
                 "duration": "10 min",
                 "description": (
-                    "A CBT staple: capture a thought, examine evidence, "
-                    "and develop a balanced alternative."
+                    "The foundational CBT tool: capture a thought, weigh "
+                    "evidence on both sides, and construct a more accurate "
+                    "alternative."
                 ),
                 "exercise": (
-                    "Use this format:\n\n"
+                    "Use this structure:\n\n"
                     "**Situation**: What happened?\n"
                     "**Automatic Thought**: What went through your mind?\n"
-                    "**Emotion** (0-100): How did it make you feel?\n"
+                    "**Emotion** (0-100): What did you feel, and how intensely?\n"
                     "**Evidence FOR** the thought:\n"
                     "**Evidence AGAINST** the thought:\n"
-                    "**Balanced Thought**: A more realistic perspective\n"
-                    "**New Emotion** (0-100): How do you feel now?\n\n"
-                    "Most people notice a 20-40 point drop in emotional "
-                    "intensity after completing a thought record."
+                    "**Balanced Thought**: A more accurate perspective\n"
+                    "**New Emotion** (0-100): What do you feel now?\n\n"
+                    "Most people observe a 20-40 point reduction in emotional "
+                    "intensity after completing this exercise."
                 ),
             },
             {
@@ -2673,18 +2673,20 @@ SKILL_MODULES = {
                 "name": "Cognitive Defusion",
                 "duration": "3 min",
                 "description": (
-                    "An ACT technique: create distance between you and "
-                    "your thoughts by seeing them as mental events."
+                    "An ACT technique for creating distance between you and "
+                    "your thoughts. Treats thoughts as mental events rather "
+                    "than facts."
                 ),
                 "exercise": (
-                    "When a painful thought arises:\n\n"
-                    "**Technique 1 — \"I notice\"**: Instead of \"I'm a failure,\" "
-                    "say \"I notice I'm having the thought that I'm a failure.\"\n\n"
-                    "**Technique 2 — Silly voice**: Repeat the thought in a "
-                    "cartoon voice. Notice how it loses power.\n\n"
-                    "**Technique 3 — Leaves on a stream**: Visualize each thought "
-                    "as a leaf floating past on a stream. Watch them come and go.\n\n"
-                    "The goal isn't to eliminate thoughts but to hold them lightly."
+                    "When a painful thought grips you:\n\n"
+                    "**Technique 1 - \"I notice\"**: Instead of \"I am a failure,\" "
+                    "say \"I notice I am having the thought that I am a failure.\"\n\n"
+                    "**Technique 2 - Displacement**: Repeat the thought in an "
+                    "absurd voice. Observe how its authority dissolves.\n\n"
+                    "**Technique 3 - Leaves on a stream**: Visualize each thought "
+                    "as a leaf on moving water. Watch them arrive and pass.\n\n"
+                    "The goal is not to eliminate thoughts. It is to hold them "
+                    "without being held by them."
                 ),
             },
             {
@@ -2692,20 +2694,20 @@ SKILL_MODULES = {
                 "name": "Values Compass",
                 "duration": "10 min",
                 "description": (
-                    "Reconnect with what truly matters by mapping your "
-                    "core values and checking alignment."
+                    "Map your core values and measure current alignment. "
+                    "Clarifies where energy should flow and where it is leaking."
                 ),
                 "exercise": (
-                    "For each life domain, rate importance (1-10) and "
+                    "For each domain, rate importance (1-10) and "
                     "current alignment (1-10):\n\n"
                     "- **Relationships**: importance ___ / alignment ___\n"
                     "- **Work/Purpose**: importance ___ / alignment ___\n"
                     "- **Health/Body**: importance ___ / alignment ___\n"
                     "- **Growth/Learning**: importance ___ / alignment ___\n"
-                    "- **Fun/Play**: importance ___ / alignment ___\n"
+                    "- **Play/Rest**: importance ___ / alignment ___\n"
                     "- **Community**: importance ___ / alignment ___\n\n"
-                    "Where are the biggest gaps? Pick ONE small action "
-                    "to close the largest gap this week."
+                    "Find the largest gap. Choose ONE concrete action "
+                    "to close it this week. Small and specific wins."
                 ),
             },
         ],
@@ -2720,226 +2722,225 @@ SKILL_MODULES = {
 REFLECTION_JOURNEYS = {
     "heartbreak": {
         "title": "💔 Navigate Heartbreak",
-        "description": "A 5-day guided series for processing loss and finding your footing.",
+        "description": "A 5-day guided sequence for processing loss and rebuilding solid ground.",
         "days": [
             {
                 "day": 1,
-                "title": "Acknowledge the Storm",
+                "title": "Name the Storm",
                 "prompt": (
-                    "Write freely about what you're feeling right now. "
-                    "Don't filter or judge — just let it flow. What does the "
-                    "pain feel like? Where do you feel it in your body?"
+                    "Write without editing. What are you feeling right now? "
+                    "Where does the pain live in your body? What shape does it take? "
+                    "Let language carry what you have been holding."
                 ),
-                "insight": "Naming pain takes away some of its power.",
+                "insight": "Precision in naming pain reduces its hold on you.",
             },
             {
                 "day": 2,
-                "title": "What You're Grieving",
+                "title": "The Full Inventory of Loss",
                 "prompt": (
-                    "Beyond the person, what else are you mourning? "
-                    "The future you imagined? A version of yourself? "
-                    "A sense of safety? List everything you're grieving."
+                    "Beyond the person: what else ended? The future you built "
+                    "in your mind? A version of yourself? A sense of certainty? "
+                    "Name every loss inside this loss."
                 ),
-                "insight": "Heartbreak is usually grief for multiple losses at once.",
+                "insight": "Heartbreak is compound grief. Naming each layer is how you process them separately.",
             },
             {
                 "day": 3,
-                "title": "Letters Unsent",
+                "title": "The Unsent Letter",
                 "prompt": (
-                    "Write a letter you'll never send. Say everything — "
-                    "the anger, the gratitude, the confusion, the love. "
-                    "Let it all out on the page."
+                    "Write a letter that will never be delivered. Say everything: "
+                    "the rage, the gratitude, the confusion, the tenderness. "
+                    "Complete honesty with no audience."
                 ),
-                "insight": "Expression, even private, helps process stuck emotions.",
+                "insight": "Expression without performance allows emotions to move rather than calcify.",
             },
             {
                 "day": 4,
-                "title": "What You're Keeping",
+                "title": "What You Are Keeping",
                 "prompt": (
-                    "What did this relationship teach you? What strengths "
-                    "did you discover? What will you carry forward, and "
-                    "what are you choosing to leave behind?"
+                    "What did this teach you that you would not give back? "
+                    "What capacities did you discover? What will you carry forward, "
+                    "and what are you deliberately setting down?"
                 ),
-                "insight": "Growth and grief can coexist.",
+                "insight": "Growth and grief are not mutually exclusive. Both can be true.",
             },
             {
                 "day": 5,
-                "title": "A Letter to Future You",
+                "title": "Letter to Your Future Self",
                 "prompt": (
-                    "Write to the version of yourself who has healed. "
-                    "What do you want them to remember about this time? "
-                    "What do you hope they've learned? What do you wish "
-                    "for them?"
+                    "Write to the version of yourself who has moved through this. "
+                    "What do you want them to remember? What do you hope they have "
+                    "learned? What do you want for them?"
                 ),
-                "insight": "Hope isn't denial — it's choosing to believe in your capacity to heal.",
+                "insight": "Imagining a healed future is not denial. It is an act of trust in your own capacity.",
             },
         ],
     },
     "motivation": {
         "title": "🔥 Rediscover Motivation",
-        "description": "A 5-day series to reconnect with your drive and purpose.",
+        "description": "A 5-day sequence for reconnecting with your drive when it has gone quiet.",
         "days": [
             {
                 "day": 1,
                 "title": "The Drain Inventory",
                 "prompt": (
-                    "What's draining your energy right now? List everything — "
-                    "obligations, people, thoughts, habits. Be ruthlessly honest."
+                    "What is consuming your energy right now? List without censoring: "
+                    "obligations, people, recurring thoughts, habits. "
+                    "Be precise and unflinching."
                 ),
-                "insight": "You can't fill a cup with holes in it.",
+                "insight": "You cannot redirect energy you have not first accounted for.",
             },
             {
                 "day": 2,
                 "title": "Spark Archaeology",
                 "prompt": (
-                    "Think back to the last time you felt truly energized "
-                    "and engaged. What were you doing? Who were you with? "
-                    "What made it special? Describe it in vivid detail."
+                    "When did you last feel genuinely energized and absorbed? "
+                    "What were you doing? Who was present? What conditions "
+                    "made it possible? Describe it with sensory detail."
                 ),
-                "insight": "Past sparks are clues to future fuel.",
+                "insight": "Past states of flow contain precise data about what fuels you.",
             },
             {
                 "day": 3,
-                "title": "Permission Slip",
+                "title": "The Permission Slip",
                 "prompt": (
-                    "Write yourself a permission slip. What have you been "
-                    "denying yourself? Permission to rest? To want more? "
-                    "To change direction? To be imperfect? Grant it now."
+                    "Write yourself explicit permission. To rest without earning it. "
+                    "To want more. To change direction. To be mid-process. "
+                    "What permission have you been withholding?"
                 ),
-                "insight": "Sometimes motivation returns when we stop forcing it.",
+                "insight": "Motivation often returns the moment you stop demanding it.",
             },
             {
                 "day": 4,
-                "title": "The Smallest Step",
+                "title": "The Minimum Viable Step",
                 "prompt": (
-                    "If your biggest goal felt impossible, what's the "
-                    "tiniest step that would feel almost too easy? "
-                    "Something you could do in 2 minutes? "
-                    "Write it down. Then do it."
+                    "If your most important goal felt impossible, what is the "
+                    "smallest action that would take under two minutes? "
+                    "Something almost absurdly easy. Name it. Then do it."
                 ),
-                "insight": "Momentum starts with micro-motion.",
+                "insight": "Momentum begins with motion, not inspiration.",
             },
             {
                 "day": 5,
-                "title": "Future Energy Map",
+                "title": "The Energy Architecture",
                 "prompt": (
-                    "Design your ideal week — not perfect, but sustainable. "
-                    "Where do you put energy? Where do you protect rest? "
+                    "Design your ideal week. Not perfect, but sustainable. "
+                    "Where does energy go? Where is rest protected? "
                     "What gets more of you, and what gets less?"
                 ),
-                "insight": "Motivation isn't found — it's designed.",
+                "insight": "Motivation is not found. It is engineered through structure and intention.",
             },
         ],
     },
     "anxiety": {
-        "title": "🌊 Befriend Your Anxiety",
-        "description": "A 5-day series to understand and work with anxiety, not against it.",
+        "title": "🌊 Understand Your Anxiety",
+        "description": "A 5-day sequence for developing a working relationship with anxiety rather than warring against it.",
         "days": [
             {
                 "day": 1,
-                "title": "Map the Anxiety",
+                "title": "Map the Terrain",
                 "prompt": (
-                    "Describe your anxiety as if it were a weather system. "
-                    "What triggers it? What does it feel like in your body? "
-                    "Does it have a voice? What does it say?"
+                    "Describe your anxiety as precisely as you can. "
+                    "What activates it? Where does it manifest in your body? "
+                    "Does it have a pattern, a rhythm, a voice? What does it say?"
                 ),
-                "insight": "Personifying anxiety creates healthy distance from it.",
+                "insight": "Observation creates distance. Distance creates choice.",
             },
             {
                 "day": 2,
-                "title": "The Worry Download",
+                "title": "The Complete Download",
                 "prompt": (
-                    "Set a timer for 10 minutes and write down EVERY worry. "
-                    "Big, small, rational, irrational — all of them. "
-                    "Then sort them: what can you control vs. what you can't?"
+                    "Set a timer for 10 minutes. Write every worry you are carrying. "
+                    "Large, small, rational, absurd. All of them. "
+                    "Then categorize: what can you influence versus what you cannot?"
                 ),
-                "insight": "Externalizing worries prevents them from looping internally.",
+                "insight": "Externalized worries lose their ability to loop. The page holds them so your mind does not have to.",
             },
             {
                 "day": 3,
-                "title": "Anxiety's Message",
+                "title": "The Signal Beneath",
                 "prompt": (
-                    "What is your anxiety trying to protect you from? "
-                    "If it had a positive intention (however misguided), "
-                    "what would it be? Thank it, then negotiate."
+                    "What is your anxiety attempting to protect you from? "
+                    "If its intention were positive, however distorted the method, "
+                    "what would it be trying to say? Acknowledge it, then negotiate."
                 ),
-                "insight": "Anxiety often carries important information wrapped in fear.",
+                "insight": "Anxiety frequently carries valid information wrapped in disproportionate fear.",
             },
             {
                 "day": 4,
-                "title": "Your Coping Toolkit",
+                "title": "Your Evidence-Based Toolkit",
                 "prompt": (
-                    "List everything that has ever helped calm your anxiety — "
-                    "even slightly. People, places, activities, thoughts, "
-                    "rituals. Rate each from 1-10 for effectiveness."
+                    "List everything that has ever reduced your anxiety, "
+                    "even marginally. People, environments, activities, "
+                    "thoughts, rituals. Rate each 1-10 for reliability."
                 ),
-                "insight": "You have more tools than you realize.",
+                "insight": "You already have more tools than you are currently using. This list makes them visible.",
             },
             {
                 "day": 5,
-                "title": "Living Alongside It",
+                "title": "Coexistence",
                 "prompt": (
-                    "Imagine a life where anxiety exists but doesn't control "
-                    "you. What would you do differently? What would you "
-                    "say yes to? Write about that version of your life."
+                    "Imagine a life where anxiety is present but not governing. "
+                    "What would you do? What would you say yes to? "
+                    "What would be different? Write that life into detail."
                 ),
-                "insight": "The goal isn't zero anxiety — it's a life worth living with it.",
+                "insight": "The goal is not the absence of anxiety. It is a life worth living alongside it.",
             },
         ],
     },
     "self_worth": {
         "title": "💎 Rebuild Self-Worth",
-        "description": "A 5-day series to reconnect with your inherent value.",
+        "description": "A 5-day sequence for reconnecting with your inherent value beneath the noise of self-doubt.",
         "days": [
             {
                 "day": 1,
-                "title": "The Evidence Vault",
+                "title": "The Evidence Record",
                 "prompt": (
-                    "List 10 things you've accomplished, survived, or done well — "
-                    "at any point in your life. They can be small. "
-                    "Include things others have thanked you for."
+                    "List 10 things you have accomplished, survived, or contributed "
+                    "at any point in your life. Include things others have valued in you. "
+                    "They can be quiet victories. Write them as facts."
                 ),
-                "insight": "Your brain filters out positives when self-worth is low. This is a corrective lens.",
+                "insight": "Low self-worth filters evidence. This exercise corrects the filter.",
             },
             {
                 "day": 2,
-                "title": "Whose Voice Is That?",
+                "title": "Source the Voice",
                 "prompt": (
-                    "When you feel 'not enough,' whose voice are you hearing? "
-                    "A parent? A past partner? Society? Write about where "
-                    "that belief came from. Is it yours, or borrowed?"
+                    "When the 'not enough' narrative appears, whose voice is it? "
+                    "A parent? A past relationship? A cultural expectation? "
+                    "Trace the belief to its origin. Is it yours, or inherited?"
                 ),
-                "insight": "Many self-beliefs are inherited, not chosen.",
+                "insight": "Many beliefs about worth were installed, not chosen. You can examine what you did not author.",
             },
             {
                 "day": 3,
-                "title": "Qualities, Not Achievements",
+                "title": "Beyond Achievement",
                 "prompt": (
-                    "Describe your value without mentioning any achievements, "
-                    "titles, or roles. Who are you at your core? "
-                    "What qualities define you?"
+                    "Describe your value without referencing any accomplishment, "
+                    "title, or role. Who are you at the level beneath performance? "
+                    "What qualities are constant regardless of output?"
                 ),
-                "insight": "You are not what you do — you are who you are.",
+                "insight": "Identity that depends on achievement is identity held hostage. You exist beneath what you do.",
             },
             {
                 "day": 4,
-                "title": "The Friend Mirror",
+                "title": "The External Mirror",
                 "prompt": (
-                    "Ask someone you trust: 'What do you appreciate about me?' "
-                    "Write their response here. How does it feel to read? "
-                    "What's hard to accept? Why?"
+                    "Ask someone you trust: 'What do you value about me?' "
+                    "Record their answer here. What resonates? "
+                    "What is difficult to accept, and why?"
                 ),
-                "insight": "Other people often see us more clearly than we see ourselves.",
+                "insight": "Others often perceive us with more accuracy than we perceive ourselves.",
             },
             {
                 "day": 5,
-                "title": "The New Agreement",
+                "title": "The New Terms",
                 "prompt": (
                     "Write a new agreement with yourself. What will you choose "
                     "to believe about your worth? What will you stop tolerating? "
-                    "What will you start protecting?"
+                    "What will you begin protecting?"
                 ),
-                "insight": "Self-worth is a practice, not a destination.",
+                "insight": "Self-worth is a daily practice, not a destination you arrive at once.",
             },
         ],
     },
@@ -2954,36 +2955,39 @@ GROUNDING_EXERCISES = [
     {
         "name": "5-4-3-2-1 Senses",
         "instruction": (
-            "Ground yourself: Name **5 things you see**, **4 you can touch**, "
-            "**3 you hear**, **2 you smell**, **1 you taste**."
+            "Anchor yourself in the present: Name **5 things you see**, "
+            "**4 you can touch**, **3 you hear**, **2 you smell**, **1 you taste**. "
+            "Notice your attention shift from thought to sensation."
         ),
     },
     {
         "name": "Box Breathing",
         "instruction": (
-            "Breathe in for 4 counts, hold 4, out for 4, hold 4. "
-            "Repeat 4 times. Feel the calm arrive."
+            "Inhale for 4 counts. Hold for 4. Exhale for 4. Hold for 4. "
+            "Repeat 4 cycles. Your nervous system will follow the rhythm."
         ),
     },
     {
         "name": "Cold Water Reset",
         "instruction": (
             "Run cold water over your wrists for 30 seconds, or splash "
-            "your face. The temperature shift resets your nervous system."
+            "your face. The temperature change activates your dive reflex "
+            "and interrupts the stress loop."
         ),
     },
     {
-        "name": "Progressive Muscle Relaxation",
+        "name": "Progressive Muscle Release",
         "instruction": (
-            "Starting from your toes, tense each muscle group for 5 seconds, "
-            "then release. Work up to your face. Notice the wave of relaxation."
+            "Starting at your feet, tense each muscle group for 5 seconds, "
+            "then release completely. Move upward to your face. "
+            "Follow the contrast between tension and release."
         ),
     },
     {
         "name": "Gratitude Anchor",
         "instruction": (
-            "Name 3 things you're grateful for right now. "
-            "They can be as simple as warm socks or a breath of fresh air."
+            "Name 3 things you are genuinely grateful for in this moment. "
+            "Be specific. The smaller and more concrete, the better."
         ),
     },
 ]
@@ -2996,7 +3000,7 @@ def get_proactive_prompt(entries):
     if not entries:
         return {
             "type": "welcome",
-            "message": "Welcome! Start your first journal entry to unlock personalised insights. ✨",
+            "message": "Welcome. Your first journal entry unlocks personalized insights. ✨",
             "exercise": None,
         }
 
@@ -3015,8 +3019,8 @@ def get_proactive_prompt(entries):
             return {
                 "type": "grounding",
                 "message": (
-                    "It looks like things have been heavy recently. "
-                    "Here's something that might help right now:"
+                    "Your recent entries suggest a difficult stretch. "
+                    "This may help right now:"
                 ),
                 "exercise": exercise,
             }
@@ -3026,8 +3030,8 @@ def get_proactive_prompt(entries):
         return {
             "type": "checkin",
             "message": (
-                "Sleep has been on your mind. How's your rest been? "
-                "A quick body scan before bed can help quiet the mind. 🌙"
+                "Sleep has been surfacing in your writing. How is your rest? "
+                "A brief body scan before bed can quiet an active mind. 🌙"
             ),
             "exercise": None,
         }
@@ -3036,18 +3040,18 @@ def get_proactive_prompt(entries):
         return {
             "type": "amplify",
             "message": (
-                "You're in a good space! ✨ What's contributing to this? "
-                "Capturing what works helps you return here again."
+                "You are in a strong place right now. ✨ What is contributing? "
+                "Naming what works makes it easier to return here."
             ),
             "exercise": None,
         }
 
     # Default: journaling cue
     cues = [
-        "How are you really doing today? Not the surface answer — the honest one.",
-        "What's taking up the most mental space right now?",
-        "What's one thing you're proud of from this week, even if it's small?",
-        "What would you tell your younger self about what you're going through?",
+        "How are you actually doing today? Not the polished version.",
+        "What is occupying the most mental space right now?",
+        "Name one thing from this week that deserves acknowledgment, however small.",
+        "What would you tell a younger version of yourself about what you are navigating?",
     ]
     return {
         "type": "journaling_cue",
